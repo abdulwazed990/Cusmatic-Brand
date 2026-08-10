@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Custom Brand Color Utility Helpers */
+.bg-rakomart-primary {
+  background-color: #281044;
+}
+
+.text-rakomart-primary {
+  color: #281044;
+}
+
+.border-rakomart-primary {
+  border-color: #281044;
+}
+
+/* bKash Theme Accents */
+.theme-bkash {
+  --theme-accent: #D12053;
+  --theme-bg-subtle: #FFF0F5;
+  --theme-border: #F8C2D4;
+}
+
+.theme-nagad {
+  --theme-accent: #E31837;
+  --theme-bg-subtle: #FFF4F2;
+  --theme-border: #FCD2CB;
+}
+
+/* Custom Scrollbar for sleek e-commerce feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #281044;
+}
+

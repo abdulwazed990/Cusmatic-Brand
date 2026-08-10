@@ -1,0 +1,6 @@
+{
+  "name": "RakoMart",
+  "description": "RakoMart — Professional Cosmetics E-commerce Store. Better Living, Delivered.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
