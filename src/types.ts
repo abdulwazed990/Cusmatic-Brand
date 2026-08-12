@@ -27,6 +27,7 @@ export interface Product {
   galleryImages?: string[];
   category: string;
   categoryBn?: string;
+  isOffer?: boolean;
   stock: number;
   description: string;
   descriptionBn?: string;
@@ -47,9 +48,14 @@ export interface Product {
 export interface Category {
   id: string;
   name: string;
-  nameBn: string;
+  nameBn?: string;
+  slug: string;
   image: string;
-  itemCount: number;
+  itemCount?: number;
+  isActive?: boolean;
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CartItem {
@@ -82,13 +88,24 @@ export interface Order {
 
 export interface HeroBanner {
   id: string;
-  title: string;
-  subtitle: string;
+  title?: string;
+  subtitle?: string;
   image: string;
+  videoUrl?: string;
+  mediaType?: 'image' | 'video';
+  position?: 'hero1' | 'hero2';
   link?: string;
   buttonText?: string;
   isActive: boolean;
   order: number;
+}
+
+export interface GalleryItem {
+  id: string;
+  title: string;
+  mediaType: 'image' | 'video';
+  mediaUrl: string;
+  linkUrl?: string;
 }
 
 export interface AdminSettings {
@@ -102,6 +119,12 @@ export interface AdminSettings {
   deliveryInsideDhaka: number;
   deliveryOutsideDhaka: number;
   siteNotice?: string;
+  siteLogoUrl?: string;
+  brandStatementText?: string;
+  brandStatementSubtext?: string;
+  brandStatementImageUrl?: string;
+  brandStatementVideoUrl?: string;
+  galleryItems?: GalleryItem[];
 }
 
 export interface DistrictData {

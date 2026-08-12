@@ -55,13 +55,13 @@ export const CheckoutView: React.FC = () => {
   if (cart.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <h3 className="text-xl font-bold text-neutral-800 mb-2">অর্ডার করার জন্য কোনো প্রোডাক্ট কার্টে নেই</h3>
-        <p className="text-xs text-neutral-500 mb-6">দয়া করে আপনার পছন্দের কসমেটিকস নির্বাচন করুন।</p>
+        <h3 className="text-xl font-bold text-neutral-800 mb-2">No products in your cart to order</h3>
+        <p className="text-xs text-neutral-500 mb-6">Please browse and select your favorite cosmetics.</p>
         <button
           onClick={() => navigateTo('products')}
           className="bg-[#281044] text-white text-xs font-bold px-6 py-2.5 rounded-full shadow-xs"
         >
-          প্রোডাক্ট ব্রাউজ করুন
+          Browse Products
         </button>
       </div>
     );
@@ -71,20 +71,20 @@ export const CheckoutView: React.FC = () => {
     const errors: { [key: string]: string } = {};
 
     if (!customerName.trim()) {
-      errors.name = 'কাস্টমারের নাম প্রদান করা বাধ্যতামূলক।';
+      errors.name = 'Customer name is required.';
     }
 
     const cleanMobile = customerMobile.trim().replace(/\D/g, '');
     if (!cleanMobile || cleanMobile.length < 11) {
-      errors.mobile = '১১ ডিজিটের সঠিক মোবাইল নম্বর প্রদান করুন (e.g. 01700000000)।';
+      errors.mobile = 'Please enter a valid 11-digit mobile number (e.g. 01700000000).';
     }
 
     if (!address.trim() || address.trim().length < 5) {
-      errors.address = 'সম্পূর্ণ ডেলিভারি ঠিকানা প্রদান করুন।';
+      errors.address = 'Please enter your complete delivery address.';
     }
 
     if ((paymentMethod === 'bkash' || paymentMethod === 'nagad') && !transactionId.trim()) {
-      errors.transactionId = 'পেমেন্টের ট্রানজেকশন আইডি (Transaction ID) প্রবেশ করানো আবশ্যক।';
+      errors.transactionId = 'Payment Transaction ID is required for digital wallet payments.';
     }
 
     setFormErrors(errors);
@@ -132,14 +132,14 @@ export const CheckoutView: React.FC = () => {
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 hover:text-[#281044] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>কেনাকাটায় ফিরে যান</span>
+          <span>Back to Shopping</span>
         </button>
       </div>
 
       <div className="text-center max-w-xl mx-auto space-y-1">
-        <h1 className="text-2xl font-extrabold text-[#281044]">অর্ডার ও ডেলিভারি কনফার্মেশন</h1>
+        <h1 className="text-2xl font-extrabold text-[#281044]">Order & Delivery Confirmation</h1>
         <p className="text-xs text-neutral-600">
-          সঠিক তথ্য ও ডেলিভারি ঠিকানা প্রদান করে দ্রুত অর্ডার কনফার্ম করুন।
+          Please enter accurate contact and delivery details to complete your order.
         </p>
       </div>
 
@@ -150,21 +150,21 @@ export const CheckoutView: React.FC = () => {
           <div className="bg-white rounded-2xl border border-neutral-200 p-5 sm:p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-[#281044] border-b border-neutral-100 pb-2 flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-[#281044] text-white text-xs flex items-center justify-center font-bold">1</span>
-              কাস্টমার তথ্য (Customer Information)
+              Customer Information
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Name */}
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-neutral-800">
-                  কাস্টমারের নাম <span className="text-red-500">*</span>
+                  Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="আপনার পুরো নাম লিখুন"
+                  placeholder="Enter your full name"
                   className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#281044]"
                 />
                 {formErrors.name && <p className="text-xs text-red-600">{formErrors.name}</p>}
@@ -173,7 +173,7 @@ export const CheckoutView: React.FC = () => {
               {/* Mobile */}
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-neutral-800">
-                  মোবাইল নম্বর <span className="text-red-500">*</span>
+                  Mobile Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -189,7 +189,7 @@ export const CheckoutView: React.FC = () => {
               {/* Email Optional */}
               <div className="sm:col-span-2 space-y-1">
                 <label className="block text-xs font-bold text-neutral-800">
-                  ইমেইল অ্যাড্রেস <span className="text-neutral-400 font-normal">(অপশনাল)</span>
+                  Email Address <span className="text-neutral-400 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="email"
@@ -206,12 +206,12 @@ export const CheckoutView: React.FC = () => {
           <div className="bg-white rounded-2xl border border-neutral-200 p-5 sm:p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-[#281044] border-b border-neutral-100 pb-2 flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-[#281044] text-white text-xs flex items-center justify-center font-bold">2</span>
-              ডেলিভারি ঠিকানা (Delivery Address)
+              Delivery Address
             </h3>
 
             {/* Delivery Area Options */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-neutral-800">ডেলিভারি এলাকা নির্বাচন করুন</label>
+              <label className="block text-xs font-bold text-neutral-800">Select Delivery Area</label>
               <div className="grid grid-cols-2 gap-3">
                 <label
                   className={`p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${
@@ -228,8 +228,8 @@ export const CheckoutView: React.FC = () => {
                     className="accent-[#281044]"
                   />
                   <div>
-                    <span className="text-xs block">ঢাকার ভেতরে</span>
-                    <span className="text-[11px] text-purple-900 font-extrabold">চার্জ: ৳{settings.deliveryInsideDhaka}</span>
+                    <span className="text-xs block">Inside Dhaka</span>
+                    <span className="text-[11px] text-purple-900 font-extrabold">Fee: ৳{settings.deliveryInsideDhaka}</span>
                   </div>
                 </label>
 
@@ -248,8 +248,8 @@ export const CheckoutView: React.FC = () => {
                     className="accent-[#281044]"
                   />
                   <div>
-                    <span className="text-xs block">ঢাকার বাইরে</span>
-                    <span className="text-[11px] text-purple-900 font-extrabold">চার্জ: ৳{settings.deliveryOutsideDhaka}</span>
+                    <span className="text-xs block">Outside Dhaka</span>
+                    <span className="text-[11px] text-purple-900 font-extrabold">Fee: ৳{settings.deliveryOutsideDhaka}</span>
                   </div>
                 </label>
               </div>
@@ -258,7 +258,7 @@ export const CheckoutView: React.FC = () => {
             {/* District & Upazila Selectors */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-neutral-800">জেলা (District)</label>
+                <label className="block text-xs font-bold text-neutral-800">District</label>
                 <select
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
@@ -273,7 +273,7 @@ export const CheckoutView: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-neutral-800">উপজেলা/থানা (Upazila/Thana)</label>
+                <label className="block text-xs font-bold text-neutral-800">Upazila / Thana</label>
                 <select
                   value={upazila}
                   onChange={(e) => setUpazila(e.target.value)}
@@ -291,14 +291,14 @@ export const CheckoutView: React.FC = () => {
             {/* Full Address */}
             <div className="space-y-1">
               <label className="block text-xs font-bold text-neutral-800">
-                বিস্তারিত ডেলিভারি ঠিকানা (Detailed Address) <span className="text-red-500">*</span>
+                Detailed Delivery Address <span className="text-red-500">*</span>
               </label>
               <textarea
                 required
                 rows={3}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="বাসা/হোল্ডিং নম্বর, রোড নম্বর, এলাকার নাম লিখুন..."
+                placeholder="House/Building No., Road No., Area Name..."
                 className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#281044]"
               />
               {formErrors.address && <p className="text-xs text-red-600">{formErrors.address}</p>}
@@ -307,13 +307,13 @@ export const CheckoutView: React.FC = () => {
             {/* Special Instructions / Notes */}
             <div className="space-y-1">
               <label className="block text-xs font-bold text-neutral-800">
-                ডেলিভারি নোট <span className="text-neutral-400 font-normal">(অপশনাল)</span>
+                Delivery Notes <span className="text-neutral-400 font-normal">(Optional)</span>
               </label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="যেমন: ডেলিভারির আগে কল করবেন"
+                placeholder="e.g. Please call before arrival"
                 className="w-full px-3.5 py-2 bg-neutral-50 border border-neutral-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#281044]"
               />
             </div>
@@ -323,7 +323,7 @@ export const CheckoutView: React.FC = () => {
           <div className="bg-white rounded-2xl border border-neutral-200 p-5 sm:p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-[#281044] border-b border-neutral-100 pb-2 flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-[#281044] text-white text-xs flex items-center justify-center font-bold">3</span>
-              পেমেন্ট বিবরণী (Payment Method)
+              Payment Method
             </h3>
 
             <PaymentGateway
@@ -341,7 +341,7 @@ export const CheckoutView: React.FC = () => {
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-white rounded-2xl border border-neutral-200 p-5 sm:p-6 shadow-md sticky top-20 space-y-5">
             <h3 className="text-base font-extrabold text-[#281044] border-b border-neutral-100 pb-3">
-              অর্ডার সামারি (Order Summary)
+              Order Summary
             </h3>
 
             {/* Item List */}
@@ -369,15 +369,15 @@ export const CheckoutView: React.FC = () => {
             {/* Calculations */}
             <div className="pt-3 border-t border-neutral-100 space-y-2 text-xs">
               <div className="flex justify-between text-neutral-600">
-                <span>পণ্যসমূহের দাম (Subtotal)</span>
+                <span>Subtotal</span>
                 <span className="font-semibold text-neutral-900">৳{cartTotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-neutral-600">
-                <span>ডেলিভারি ফি ({deliveryArea === 'inside_dhaka' ? 'ঢাকার ভেতরে' : 'ঢাকার বাইরে'})</span>
+                <span>Delivery Fee ({deliveryArea === 'inside_dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'})</span>
                 <span className="font-semibold text-neutral-900">৳{deliveryFee.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-base font-extrabold text-[#281044] pt-2 border-t border-neutral-200">
-                <span>সর্বমোট (Total Payable)</span>
+                <span>Total Payable</span>
                 <span>৳{orderTotal.toLocaleString()}</span>
               </div>
             </div>
@@ -389,11 +389,11 @@ export const CheckoutView: React.FC = () => {
               className="w-full bg-[#281044] hover:bg-[#3b1763] text-white font-extrabold text-base py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.99] disabled:opacity-60"
             >
               {isSubmitting ? (
-                <span>প্রসেসিং হচ্ছে...</span>
+                <span>Processing...</span>
               ) : (
                 <>
                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  <span>অর্ডার প্লেস করুন (৳{orderTotal.toLocaleString()})</span>
+                  <span>Place Order (৳{orderTotal.toLocaleString()})</span>
                 </>
               )}
             </button>
@@ -401,11 +401,11 @@ export const CheckoutView: React.FC = () => {
             <div className="space-y-2 pt-2 border-t border-neutral-100 text-[11px] text-neutral-600">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>১০০% আসল ও অরিজিনাল কসমেটিকস গ্যারান্টি।</span>
+                <span>100% genuine & authentic cosmetics guarantee.</span>
               </div>
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-purple-700 shrink-0" />
-                <span>অর্ডার করার পর মোবাইল দিয়ে ট্র্যাকিং করার সুবিধা।</span>
+                <span>Easy order tracking using your mobile number.</span>
               </div>
             </div>
           </div>

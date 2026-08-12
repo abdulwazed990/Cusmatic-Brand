@@ -11,12 +11,12 @@ export const ProductDetails: React.FC = () => {
   if (!selectedProduct) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <h3 className="text-lg font-bold text-neutral-800 mb-2">প্রোডাক্ট পাওয়া যায়নি</h3>
+        <h3 className="text-lg font-bold text-neutral-800 mb-2">Product Not Found</h3>
         <button
           onClick={() => navigateTo('products')}
           className="bg-[#281044] text-white text-xs font-bold px-6 py-2.5 rounded-full"
         >
-          সব প্রোডাক্ট দেখুন
+          View All Products
         </button>
       </div>
     );
@@ -36,7 +36,7 @@ export const ProductDetails: React.FC = () => {
 
   const whatsappPhone = settings.customerCarePhone.replace(/\D/g, '');
   const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(
-    `হ্যালো RakoMart, আমি এই প্রোডাক্টটি সম্পর্কে জানতে/অর্ডার করতে চাই: ${selectedProduct.title} (ID: ${selectedProduct.id})`
+    `Hello RakoMart, I would like to inquire about / order this product: ${selectedProduct.title} (ID: ${selectedProduct.id})`
   )}`;
 
   return (
@@ -48,7 +48,7 @@ export const ProductDetails: React.FC = () => {
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 hover:text-[#281044] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>সকল প্রোডাক্টে ফিরে যান</span>
+          <span>Back to All Products</span>
         </button>
       </div>
 
@@ -75,7 +75,7 @@ export const ProductDetails: React.FC = () => {
                 className="absolute bottom-3 right-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-md flex items-center gap-2 transition-transform hover:scale-105"
               >
                 <Play className="w-4 h-4 fill-current" />
-                <span>ভিডিও রিভিউ দেখুন</span>
+                <span>Watch Video Review</span>
               </button>
             )}
           </div>
@@ -109,11 +109,11 @@ export const ProductDetails: React.FC = () => {
 
               {selectedProduct.stock > 0 ? (
                 <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
-                  ✓ ইন স্টক ({selectedProduct.stock} টি অবশিষ্ট)
+                  ✓ In Stock ({selectedProduct.stock} left)
                 </span>
               ) : (
                 <span className="text-red-600 font-bold bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-md">
-                  আউট অব স্টক
+                  Out of Stock
                 </span>
               )}
             </div>
@@ -123,11 +123,6 @@ export const ProductDetails: React.FC = () => {
               <h1 className="text-xl sm:text-2xl font-extrabold text-neutral-900 leading-snug">
                 {selectedProduct.title}
               </h1>
-              {selectedProduct.titleBn && (
-                <p className="text-sm font-bold text-purple-900 mt-1 font-bengali">
-                  {selectedProduct.titleBn}
-                </p>
-              )}
             </div>
 
             {/* Rating & Volume */}
@@ -135,11 +130,11 @@ export const ProductDetails: React.FC = () => {
               <div className="flex items-center gap-1 text-amber-500 font-bold">
                 <Star className="w-4 h-4 fill-current" />
                 <span>{selectedProduct.rating}</span>
-                <span className="text-neutral-400 font-normal">({selectedProduct.reviewsCount} রিভিউ)</span>
+                <span className="text-neutral-400 font-normal">({selectedProduct.reviewsCount} reviews)</span>
               </div>
               {selectedProduct.volume && (
                 <span className="bg-neutral-100 font-medium px-2.5 py-0.5 rounded text-neutral-700">
-                  পরিমাণ: {selectedProduct.volume}
+                  Volume / Size: {selectedProduct.volume}
                 </span>
               )}
             </div>
@@ -164,11 +159,6 @@ export const ProductDetails: React.FC = () => {
             {/* Brief Description */}
             <div className="space-y-2 text-xs sm:text-sm text-neutral-700 leading-relaxed">
               <p>{selectedProduct.description}</p>
-              {selectedProduct.descriptionBn && (
-                <p className="text-purple-950 font-medium bg-purple-50 p-3 rounded-lg border border-purple-100">
-                  {selectedProduct.descriptionBn}
-                </p>
-              )}
             </div>
 
             {/* Key Specifications / Origin */}
@@ -176,19 +166,19 @@ export const ProductDetails: React.FC = () => {
               <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 text-xs space-y-1.5">
                 {selectedProduct.details.skinType && (
                   <div>
-                    <span className="font-bold text-neutral-800">উপযোগী স্কিন টাইপ:</span>{' '}
+                    <span className="font-bold text-neutral-800">Suitable Skin Type:</span>{' '}
                     <span className="text-neutral-600">{selectedProduct.details.skinType}</span>
                   </div>
                 )}
                 {selectedProduct.details.origin && (
                   <div>
-                    <span className="font-bold text-neutral-800">উৎপাদনকারী দেশ:</span>{' '}
+                    <span className="font-bold text-neutral-800">Country of Origin:</span>{' '}
                     <span className="text-neutral-600">{selectedProduct.details.origin}</span>
                   </div>
                 )}
                 {selectedProduct.details.keyIngredients && selectedProduct.details.keyIngredients.length > 0 && (
                   <div>
-                    <span className="font-bold text-neutral-800">মূল উপাদান:</span>{' '}
+                    <span className="font-bold text-neutral-800">Key Ingredients:</span>{' '}
                     <span className="text-neutral-600">
                       {selectedProduct.details.keyIngredients.join(', ')}
                     </span>
@@ -202,7 +192,7 @@ export const ProductDetails: React.FC = () => {
           <div className="space-y-3 pt-4 border-t border-neutral-200">
             {/* Quantity Row */}
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-neutral-800">পরিমাণ:</span>
+              <span className="text-xs font-bold text-neutral-800">Quantity:</span>
               <div className="inline-flex items-center border border-neutral-300 rounded-lg bg-white">
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -227,7 +217,7 @@ export const ProductDetails: React.FC = () => {
                 className="py-3 px-4 bg-purple-100 hover:bg-purple-200 text-[#281044] font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-colors"
               >
                 <ShoppingBag className="w-4 h-4 text-[#281044]" />
-                <span>কার্টে যোগ করুন</span>
+                <span>Add to Cart</span>
               </button>
 
               <button
@@ -235,7 +225,7 @@ export const ProductDetails: React.FC = () => {
                 className="py-3 px-4 bg-[#281044] hover:bg-[#3b1763] text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-md"
               >
                 <Zap className="w-4 h-4 text-amber-300 fill-current" />
-                <span>সরাসরি অর্ডার করুন</span>
+                <span>Order Now</span>
               </button>
             </div>
 
@@ -248,7 +238,7 @@ export const ProductDetails: React.FC = () => {
                 className="w-full py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors shadow-2xs"
               >
                 <Phone className="w-4 h-4 text-emerald-600 fill-current" />
-                <span>অর্ডার করতে সমস্যা হচ্ছে? কাস্টমার কেয়ারের সাথে কথা বলুন</span>
+                <span>Need Help Placing Order? Talk to Customer Care</span>
               </a>
             </div>
 
@@ -256,11 +246,11 @@ export const ProductDetails: React.FC = () => {
             <div className="grid grid-cols-2 gap-2 text-[11px] text-neutral-600 pt-2">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>১০০% আসল কসমেটিকস</span>
+                <span>100% Genuine Cosmetics</span>
               </div>
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-purple-700 shrink-0" />
-                <span>সারাদেশে হোম ডেলিভারি</span>
+                <span>Nationwide Home Delivery</span>
               </div>
             </div>
           </div>
@@ -273,7 +263,7 @@ export const ProductDetails: React.FC = () => {
           <div className="bg-white rounded-2xl max-w-2xl w-full p-4 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b">
               <h3 className="font-bold text-sm text-neutral-800">
-                {selectedProduct.title} — ভিডিও রিভিউ
+                {selectedProduct.title} — Video Review
               </h3>
               <button
                 onClick={() => setShowVideoModal(false)}

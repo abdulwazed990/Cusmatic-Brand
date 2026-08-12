@@ -27,9 +27,9 @@ export const CartDrawer: React.FC = () => {
         <div className="p-4 bg-[#281044] text-white flex items-center justify-between border-b border-purple-900">
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5 text-purple-300" />
-            <h3 className="font-bold text-base">শপিং কার্ট (Your Cart)</h3>
+            <h3 className="font-bold text-base">Shopping Cart</h3>
             <span className="text-xs bg-purple-800 text-purple-200 px-2 py-0.5 rounded-full font-semibold">
-              {cart.reduce((a, b) => a + b.quantity, 0)} টি
+              {cart.reduce((a, b) => a + b.quantity, 0)} items
             </span>
           </div>
 
@@ -48,9 +48,9 @@ export const CartDrawer: React.FC = () => {
               <div className="w-16 h-16 rounded-full bg-purple-50 text-[#281044] flex items-center justify-center mb-3">
                 <ShoppingBag className="w-8 h-8" />
               </div>
-              <h4 className="text-base font-bold text-neutral-800 mb-1">আপনার কার্ট খালি রয়েছে</h4>
+              <h4 className="text-base font-bold text-neutral-800 mb-1">Your Cart is Empty</h4>
               <p className="text-xs text-neutral-500 max-w-xs mb-6">
-                পছন্দের কসমেটিকস অথবা স্কিনকেয়ার প্রোডাক্ট বেছে নিয়ে কার্টে যোগ করুন।
+                Browse our cosmetics and skincare collections and add your favorite beauty items.
               </p>
               <button
                 onClick={() => {
@@ -59,7 +59,7 @@ export const CartDrawer: React.FC = () => {
                 }}
                 className="bg-[#281044] hover:bg-[#3b1763] text-white text-xs font-bold px-6 py-2.5 rounded-full shadow-xs transition-colors"
               >
-                প্রোডাক্ট ব্রাউজ করুন
+                Browse Products
               </button>
             </div>
           ) : (
@@ -128,15 +128,15 @@ export const CartDrawer: React.FC = () => {
           <div className="p-4 bg-neutral-50 border-t border-neutral-200 space-y-3">
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between text-neutral-600">
-                <span>সাব টোটাল (Subtotal)</span>
+                <span>Subtotal</span>
                 <span className="font-semibold text-neutral-900">৳{cartTotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-neutral-600">
-                <span>ডেলিভারি চার্জ (Delivery Fee)</span>
-                <span className="text-purple-900 font-medium">চেকআউটে নির্ধারিত হবে</span>
+                <span>Delivery Fee</span>
+                <span className="text-purple-900 font-medium">Calculated at checkout</span>
               </div>
               <div className="flex justify-between text-sm font-extrabold text-[#281044] pt-2 border-t border-neutral-200">
-                <span>সর্বমোট (Estimated Total)</span>
+                <span>Estimated Total</span>
                 <span>৳{cartTotal.toLocaleString()}</span>
               </div>
             </div>
@@ -145,13 +145,13 @@ export const CartDrawer: React.FC = () => {
               onClick={handleCheckout}
               className="w-full bg-[#281044] hover:bg-[#3b1763] text-white font-bold text-sm py-3 rounded-xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
             >
-              <span>চেকআউট ও অর্ডার কনফার্ম</span>
+              <span>Proceed to Checkout</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
             <div className="flex items-center justify-center gap-1.5 text-[11px] text-neutral-500 pt-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>১০০% আসল প্রোডাক্ট ও নিরাপদ ট্রানজেকশন</span>
+              <span>100% Genuine Products & Secure Checkout</span>
             </div>
           </div>
         )}

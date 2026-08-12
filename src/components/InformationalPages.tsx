@@ -44,11 +44,11 @@ export const InformationalPages: React.FC = () => {
             </p>
 
             <p>
-              RakoMart (রকমর্ট) বাংলাদেশের বিশ্বস্ত কসমেটিকস ও লাইফস্টাইল ই-কমার্স প্ল্যাটফর্ম। আমরা ত্বক ও চুলের যত্ন, মেকআপ এবং ডেইলি এসেনশিয়ালের আসল পণ্য সরবরাহ করে থাকি।
+              RakoMart is Bangladesh's trusted cosmetics and lifestyle e-commerce platform. We deliver 100% authentic skincare, hair care, makeup, and daily lifestyle essentials nationwide.
             </p>
 
             <div className="bg-purple-50 p-4 rounded-xl border border-purple-200 font-bold text-[#281044]">
-              “Don't just shop — choose better, choose রকমর্ট”
+              “Don't just shop — choose better, choose RakoMart”
             </div>
           </div>
         )}

@@ -4,9 +4,14 @@ import { useStore } from '../context/StoreContext';
 import { CATEGORIES } from '../data/mockProducts';
 import { HeroSlider } from './HeroSlider';
 import { ProductCard } from './ProductCard';
+import { RakoMartLogoIcon } from './RakoMartLogo';
 
 export const HomeView: React.FC = () => {
-  const { products, setSelectedCategory, navigateTo, settings } = useStore();
+  const { products, categories, setSelectedCategory, navigateTo, settings } = useStore();
+
+  const activeCategories = categories
+    .filter((c) => c.isActive !== false)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
 
   const featuredProducts = products.filter((p) => p.isFeatured).slice(0, 8);
   const bestSellers = products.slice(0, 4);
@@ -16,39 +21,22 @@ export const HomeView: React.FC = () => {
 
   return (
     <div className="space-y-10 pb-8">
-      {/* Hero Carousel Banner Slider */}
-      <HeroSlider />
+      {/* 1st Hero Carousel Banner Slider */}
+      <HeroSlider position="hero1" />
 
-      {/* Brand Value & Statement Banner */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="bg-gradient-to-r from-purple-900 via-[#281044] to-purple-950 text-white rounded-2xl p-6 sm:p-10 shadow-md border border-purple-800/50 relative overflow-hidden">
-          <div className="max-w-3xl space-y-3 relative z-10">
-            <span className="inline-block bg-purple-500/30 border border-purple-300/30 text-purple-200 text-xs font-semibold px-3.5 py-1 rounded-full">
-              RakoMart Brand Statement
-            </span>
-            <h2 className="text-lg sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-snug font-sans">
-              “At RakoMart, we don't just sell products; we curate better choices for your lifestyle.”
-            </h2>
-            <p className="text-xs sm:text-sm text-purple-200/90 leading-relaxed font-sans">
-              Whether it's daily necessities or lifestyle essentials, our commitment is simple: delivering superior quality, authentic products, and a seamless shopping experience.
-            </p>
-            <div className="pt-2">
-              <span className="inline-block bg-white text-[#281044] text-xs font-extrabold px-4 py-2 rounded-xl shadow-xs font-bengali">
-                “Don't just shop — choose better, choose রকমর্ট”
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* 2nd Hero Carousel / Brand Value Banner Section */}
+      <HeroSlider position="hero2" />
+
+      {/* Categories Showcase Grid */}
 
       {/* Categories Showcase Grid */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 space-y-4">
         <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
           <div>
             <h2 className="text-lg sm:text-xl font-extrabold text-[#281044]">
-              প্রোডাক্ট ক্যাটাগরিসমূহ (Categories)
+              Product Categories
             </h2>
-            <p className="text-xs text-neutral-500">আপনার পছন্দের কসমেটিকস ক্যাটাগরি বেছে নিন</p>
+            <p className="text-xs text-neutral-500">Explore your favorite beauty & lifestyle categories</p>
           </div>
 
           <button
@@ -58,30 +46,31 @@ export const HomeView: React.FC = () => {
             }}
             className="text-xs font-bold text-[#281044] hover:underline flex items-center gap-1"
           >
-            <span>সব দেখুন</span>
+            <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
-          {CATEGORIES.map((cat) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
+          {activeCategories.map((cat) => (
             <div
-              key={cat.id}
+              key={cat.id || cat.slug}
               onClick={() => {
-                setSelectedCategory(cat.id);
+                setSelectedCategory(cat.id || cat.slug);
                 navigateTo('products');
               }}
-              className="group bg-white rounded-xl border border-neutral-200/80 p-3 text-center cursor-pointer hover:border-purple-300 hover:shadow-md transition-all duration-300 flex flex-col items-center justify-between"
+              className="group bg-white rounded-2xl border border-neutral-200/80 p-3 text-center cursor-pointer hover:border-[#281044] hover:shadow-md transition-all duration-300 flex flex-col items-center justify-center space-y-2 min-h-[110px]"
             >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden mb-2 bg-purple-50 group-hover:scale-105 transition-transform duration-300">
-                <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-purple-50 group-hover:scale-105 transition-transform duration-300 shadow-2xs border border-purple-100/50 flex items-center justify-center shrink-0">
+                <img
+                  src={cat.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80'}
+                  alt={cat.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <h3 className="text-xs font-bold text-neutral-900 group-hover:text-[#281044] transition-colors leading-snug">
+              <h3 className="text-xs font-bold text-neutral-800 group-hover:text-[#281044] transition-colors leading-tight px-1 text-center">
                 {cat.name}
               </h3>
-              <span className="text-[10px] text-purple-900 font-medium font-bengali">
-                {cat.nameBn}
-              </span>
             </div>
           ))}
         </div>
@@ -106,7 +95,7 @@ export const HomeView: React.FC = () => {
             }}
             className="text-xs font-bold text-[#281044] hover:underline flex items-center gap-1 shrink-0"
           >
-            <span>সকল প্রোডাক্ট</span>
+            <span>All Products</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -127,10 +116,10 @@ export const HomeView: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-extrabold text-emerald-950">
-                অর্ডার করতে সমস্যা হচ্ছে? কাস্টমার কেয়ারের সাথে কথা বলুন
+                Need Help Placing Your Order? Contact Customer Care
               </h3>
               <p className="text-xs text-emerald-800">
-                যে কোনো প্রোডাক্টের বিস্তারিত বা পেমেন্ট সহায়তায় সরাসরি মেসেজ পাঠাতে ক্লিক করুন।
+                Click below to message us directly for instant product information or payment assistance.
               </p>
             </div>
           </div>
@@ -141,7 +130,7 @@ export const HomeView: React.FC = () => {
             rel="noopener noreferrer"
             className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-full shadow-xs transition-transform active:scale-95 shrink-0 text-center"
           >
-            হোয়াটসঅ্যাপে চ্যাট করুন
+            Chat on WhatsApp
           </a>
         </div>
       </section>
@@ -151,16 +140,16 @@ export const HomeView: React.FC = () => {
         <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
           <div>
             <h2 className="text-lg sm:text-xl font-extrabold text-[#281044]">
-              জনপ্রিয় কসমেটিকস (Bestsellers)
+              Bestselling Products
             </h2>
-            <p className="text-xs text-neutral-500">গ্রাহকদের সবচেয়ে পছন্দের ত্বকচর্চা ও রূপচর্চা পণ্যসমূহ</p>
+            <p className="text-xs text-neutral-500">Customer favorite skincare and cosmetic essentials</p>
           </div>
 
           <button
             onClick={() => navigateTo('products')}
             className="text-xs font-bold text-[#281044] hover:underline flex items-center gap-1"
           >
-            <span>সবগুলো দেখুন</span>
+            <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -179,9 +168,9 @@ export const HomeView: React.FC = () => {
             <div className="w-12 h-12 rounded-full bg-purple-50 text-[#281044] flex items-center justify-center mb-1">
               <ShieldCheck className="w-6 h-6" />
             </div>
-            <h4 className="text-sm font-bold text-neutral-900">১০০% আসল প্রোডাক্ট</h4>
+            <h4 className="text-sm font-bold text-neutral-900">100% Authentic Products</h4>
             <p className="text-xs text-neutral-500 max-w-xs">
-              আমরা কোনো প্রকার কপি বা নকল প্রোডাক্ট বিক্রি করি না। শতভাগ অরিজিনাল কসমেটিকস গ্যারান্টি।
+              We never sell fake or replica products. 100% genuine cosmetics guarantee.
             </p>
           </div>
 
@@ -189,9 +178,9 @@ export const HomeView: React.FC = () => {
             <div className="w-12 h-12 rounded-full bg-purple-50 text-[#281044] flex items-center justify-center mb-1">
               <Truck className="w-6 h-6" />
             </div>
-            <h4 className="text-sm font-bold text-neutral-900">দ্রুত সারাদেশে ডেলিভারি</h4>
+            <h4 className="text-sm font-bold text-neutral-900">Fast Nationwide Delivery</h4>
             <p className="text-xs text-neutral-500 max-w-xs">
-              ঢাকার ভেতরে ২৪-৪৮ ঘণ্টা এবং ঢাকার বাইরে ২-৩ দিনের মধ্যে বিশ্বস্ত কুরিয়ারে ক্যাশ অন ডেলিভারি।
+              Inside Dhaka in 24-48 hours and outside Dhaka in 2-3 days via trusted couriers with Cash on Delivery.
             </p>
           </div>
 
@@ -199,9 +188,9 @@ export const HomeView: React.FC = () => {
             <div className="w-12 h-12 rounded-full bg-purple-50 text-[#281044] flex items-center justify-center mb-1">
               <HeartHandshake className="w-6 h-6" />
             </div>
-            <h4 className="text-sm font-bold text-neutral-900">বিকাশ ও নগদ পেমেন্ট</h4>
+            <h4 className="text-sm font-bold text-neutral-900">bKash & Nagad Payments</h4>
             <p className="text-xs text-neutral-500 max-w-xs">
-              বিকাশ ও নগদের মাধ্যমে নিরাপদ অনলাইন পেমেন্ট অথবা প্রোডাক্ট বুঝে পেয়ে টাকা পরিশোধ করার সুবিধা।
+              Secure digital payments via bKash and Nagad or pay Cash on Delivery after receiving your order.
             </p>
           </div>
         </div>

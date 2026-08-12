@@ -50,7 +50,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
       {/* Step 1: Payment Method Selector Cards */}
       <div>
         <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-2.5">
-          পেমেন্ট মেথড নির্বাচন করুন (Select Payment Method)
+          Select Payment Method
         </label>
 
         <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
@@ -76,7 +76,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
               />
             </div>
             <span className="text-xs font-bold text-neutral-900">bKash</span>
-            <span className="text-[10px] text-pink-700 font-medium mt-0.5">বিকাশ পেমেন্ট</span>
+            <span className="text-[10px] text-pink-700 font-medium mt-0.5">Digital Wallet</span>
           </button>
 
           {/* Nagad Selector */}
@@ -100,7 +100,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
               />
             </div>
             <span className="text-xs font-bold text-neutral-900">Nagad</span>
-            <span className="text-[10px] text-orange-700 font-medium mt-0.5">নগদ পেমেন্ট</span>
+            <span className="text-[10px] text-orange-700 font-medium mt-0.5">Digital Wallet</span>
           </button>
 
           {/* Cash on Delivery Selector */}
@@ -117,7 +117,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
               <CreditCard className="w-8 h-8" />
             </div>
             <span className="text-xs font-bold text-neutral-900">COD</span>
-            <span className="text-[10px] text-purple-900 font-medium mt-0.5">ক্যাশ অন ডেলিভারি</span>
+            <span className="text-[10px] text-purple-900 font-medium mt-0.5">Cash on Delivery</span>
           </button>
         </div>
       </div>
@@ -146,10 +146,10 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
                   selectedMethod === 'bkash' ? 'text-[#D12053]' : 'text-[#E31837]'
                 }`}
               >
-                {selectedMethod} অনলাইন পেমেন্ট ইনস্ট্রাকশন
+                {selectedMethod} Payment Instructions
               </h4>
               <p className="text-[11px] text-neutral-600">
-                নিচের নম্বরটিতে {selectedMethod === 'bkash' ? 'bKash Send Money / Payment' : 'Nagad Send Money'} করুন।
+                Please Send Money or Pay to the account number shown below.
               </p>
             </div>
           </div>
@@ -159,7 +159,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
             {/* Number Box with COPY button */}
             <div className="bg-white p-3 rounded-lg border border-neutral-200 flex flex-col justify-between">
               <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
-                {selectedMethod.toUpperCase()} পার্সোনাল/মার্চেন্ট নম্বর
+                {selectedMethod.toUpperCase()} Account Number
               </span>
               <div className="flex items-center justify-between mt-1">
                 <span className="text-base sm:text-lg font-mono font-extrabold text-neutral-900">
@@ -194,13 +194,13 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
             {/* Amount Box */}
             <div className="bg-white p-3 rounded-lg border border-neutral-200 flex flex-col justify-between">
               <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
-                পরিশোধযোগ্য পেমেন্ট পরিমাণ (Amount)
+                Total Amount Payable
               </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="text-lg sm:text-xl font-extrabold text-[#281044]">
                   ৳{amount.toLocaleString()}
                 </span>
-                <span className="text-xs text-neutral-500 font-medium">(সর্বমোট)</span>
+                <span className="text-xs text-neutral-500 font-medium">(Total)</span>
               </div>
             </div>
           </div>
@@ -208,13 +208,13 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
           {/* Transaction ID Input */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-neutral-800">
-              ট্রানজেকশন আইডি (Transaction ID) <span className="text-red-500">*</span>
+              Transaction ID <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={transactionId}
               onChange={(e) => onTransactionIdChange(e.target.value.toUpperCase().trim())}
-              placeholder="e.g. 9B7X210K89 অথবা TRX123456"
+              placeholder="e.g. 9B7X210K89 or TRX123456"
               className={`w-full px-3.5 py-2.5 bg-white border rounded-lg text-sm font-mono tracking-wider focus:outline-none focus:ring-2 ${
                 errorMsg
                   ? 'border-red-400 focus:ring-red-200'
@@ -226,7 +226,7 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
             {errorMsg && <p className="text-xs font-semibold text-red-600 mt-1">{errorMsg}</p>}
             <p className="text-[11px] text-neutral-500 flex items-center gap-1">
               <Info className="w-3 h-3 text-neutral-400 shrink-0" />
-              পেমেন্ট সফল হওয়ার পর প্রাপ্ত SMS থেকে Transaction ID টি উপরে বসিয়ে দিন।
+              Enter the Transaction ID received via SMS after completing the payment.
             </p>
           </div>
         </div>
@@ -238,9 +238,9 @@ export const PaymentGateway: React.FC<PaymentGatewayProps> = ({
           <ShieldCheck className="w-5 h-5 text-[#281044] shrink-0 mt-0.5" />
           <div className="text-xs text-neutral-700 leading-relaxed">
             <span className="font-bold text-[#281044] block text-sm mb-0.5">
-              ক্যাশ অন ডেলিভারি (Cash on Delivery)
+              Cash on Delivery (COD)
             </span>
-            পণ্য ডেলিভারি পাওয়ার পর ডেলিভারি ম্যানের কাছে নগদ মূল্য পরিশোধ করুন। ঢাকার মধ্যে সাধারণত ২৪-৪৮ ঘণ্টা এবং ঢাকার বাইরে ২-৩ কার্যদিবসের মধ্যে ডেলিভারি সম্পন্ন হয়।
+            Pay cash directly to the delivery person upon receiving your product package. Delivery takes 24-48 hours inside Dhaka and 2-3 business days outside Dhaka.
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Truck, Clock, ShieldCheck, FileText, CheckCircle2, AlertCircle, Phone } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Order } from '../types';
+import { RakoMartLogo } from './RakoMartLogo';
 
 export const OrderTrackingView: React.FC = () => {
   const { searchCustomerOrders, navigateTo } = useStore();
@@ -50,9 +51,9 @@ export const OrderTrackingView: React.FC = () => {
         <div className="w-12 h-12 bg-purple-100 text-[#281044] rounded-full flex items-center justify-center mx-auto mb-1">
           <Truck className="w-6 h-6" />
         </div>
-        <h1 className="text-2xl font-extrabold text-[#281044]">অর্ডার ট্র্যাকিং ও আপডেট</h1>
+        <h1 className="text-2xl font-extrabold text-[#281044]">Order Tracking & Status</h1>
         <p className="text-xs text-neutral-600 max-w-md mx-auto">
-          অর্ডার করার সময় ব্যবহৃত আপনার ১১ ডিজিটের মোবাইল নম্বর প্রদান করে বর্তমান এবং পূর্ববর্তী সকল অর্ডারের স্ট্যাটাস জানুন।
+          Enter the 11-digit mobile number used during order placement to view active and past order status.
         </p>
       </div>
 
@@ -61,7 +62,7 @@ export const OrderTrackingView: React.FC = () => {
         <form onSubmit={handleSearch} className="space-y-4">
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-neutral-800">
-              কাস্টমার মোবাইল নম্বর (Mobile Number)
+              Customer Mobile Number
             </label>
             <div className="relative">
               <input
@@ -81,7 +82,7 @@ export const OrderTrackingView: React.FC = () => {
             className="w-full bg-[#281044] hover:bg-[#3b1763] text-white font-bold text-sm py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
           >
             <Search className="w-4 h-4" />
-            <span>অর্ডার খুঁজুন</span>
+            <span>Track Orders</span>
           </button>
         </form>
       </div>
@@ -91,16 +92,16 @@ export const OrderTrackingView: React.FC = () => {
         <div className="space-y-4 animate-fadeIn">
           <h3 className="text-sm font-bold text-neutral-800 border-b pb-2 flex items-center justify-between">
             <span>
-              সার্চ রেজাল্ট: <span className="text-[#281044] font-extrabold">{foundOrders.length}</span> টি অর্ডার পাওয়া গেছে
+              Search Results: <span className="text-[#281044] font-extrabold">{foundOrders.length}</span> orders found
             </span>
           </h3>
 
           {foundOrders.length === 0 ? (
             <div className="bg-white rounded-2xl border border-neutral-200 p-8 text-center space-y-2">
               <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-              <h4 className="text-base font-bold text-neutral-800">কোনো অর্ডার পাওয়া যায়নি</h4>
+              <h4 className="text-base font-bold text-neutral-800">No Orders Found</h4>
               <p className="text-xs text-neutral-500 max-w-sm mx-auto">
-                প্রদানকৃত মোবাইল নম্বরটির অধীনে কোনো সক্রিয় বা পূর্ববর্তী অর্ডার পাওয়া যায়নি। সঠিক নম্বর প্রদান করেছেন কিনা পরীক্ষা করুন।
+                No active or past orders were found for this mobile number. Please verify your mobile number and try again.
               </p>
             </div>
           ) : (
@@ -113,19 +114,19 @@ export const OrderTrackingView: React.FC = () => {
                   {/* Top Bar: ID & Status */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-neutral-100 text-xs">
                     <div>
-                      <span className="text-neutral-500 font-bold block">অর্ডার আইডি</span>
+                      <span className="text-neutral-500 font-bold block">Order ID</span>
                       <span className="font-mono font-extrabold text-[#281044] text-sm">#{order.id}</span>
                     </div>
 
                     <div>
-                      <span className="text-neutral-500 font-bold block">অর্ডার তারিখ</span>
+                      <span className="text-neutral-500 font-bold block">Order Date</span>
                       <span className="text-neutral-800 font-medium">
-                        {new Date(order.createdAt).toLocaleDateString('bn-BD')}
+                        {new Date(order.createdAt).toLocaleDateString('en-US')}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-neutral-500 font-bold block mb-0.5">বর্তমান স্ট্যাটাস</span>
+                      <span className="text-neutral-500 font-bold block mb-0.5">Current Status</span>
                       <span
                         className={`inline-block px-3 py-0.5 rounded-full text-[11px] font-extrabold border ${getStatusBadge(
                           order.orderStatus
@@ -138,7 +139,7 @@ export const OrderTrackingView: React.FC = () => {
 
                   {/* Items Brief */}
                   <div className="space-y-2 text-xs">
-                    <span className="font-bold text-neutral-700 block">অর্ডারকৃত পণ্যসমূহ:</span>
+                    <span className="font-bold text-neutral-700 block">Ordered Items:</span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {order.items.map((item) => (
                         <div key={item.product.id} className="flex items-center gap-2.5 bg-neutral-50 p-2 rounded-lg border">
@@ -161,7 +162,7 @@ export const OrderTrackingView: React.FC = () => {
                   {/* Payment & Action Strip */}
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-neutral-100 text-xs">
                     <div>
-                      <span className="text-neutral-500 font-bold">সর্বমোট পরিমাণ:</span>{' '}
+                      <span className="text-neutral-500 font-bold">Total Amount:</span>{' '}
                       <span className="text-sm font-extrabold text-[#281044]">
                         ৳{order.total.toLocaleString()}
                       </span>{' '}
@@ -173,7 +174,7 @@ export const OrderTrackingView: React.FC = () => {
                       className="px-3.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#281044] rounded-lg font-bold flex items-center gap-1.5 transition-colors"
                     >
                       <FileText className="w-3.5 h-3.5" />
-                      <span>ইনভয়েস বিবরণ দেখুন</span>
+                      <span>View Invoice Details</span>
                     </button>
                   </div>
                 </div>
@@ -188,13 +189,16 @@ export const OrderTrackingView: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b">
-              <div>
-                <h3 className="font-extrabold text-base text-[#281044]">
-                  অর্ডার ইনভয়েস #{selectedOrderForInvoice.id}
-                </h3>
-                <p className="text-xs text-neutral-500">
-                  তারিখ: {new Date(selectedOrderForInvoice.createdAt).toLocaleDateString('bn-BD')}
-                </p>
+              <div className="flex items-center gap-3">
+                <RakoMartLogo size="sm" />
+                <div>
+                  <h3 className="font-extrabold text-base text-[#281044]">
+                    Order Invoice #{selectedOrderForInvoice.id}
+                  </h3>
+                  <p className="text-xs text-neutral-500">
+                    Date: {new Date(selectedOrderForInvoice.createdAt).toLocaleDateString('en-US')}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedOrderForInvoice(null)}
@@ -207,15 +211,15 @@ export const OrderTrackingView: React.FC = () => {
             <div className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3 bg-neutral-50 p-3 rounded-lg border">
                 <div>
-                  <span className="font-bold text-neutral-800 block">কাস্টমার নাম:</span>
+                  <span className="font-bold text-neutral-800 block">Customer Name:</span>
                   <span>{selectedOrderForInvoice.customerName}</span>
                 </div>
                 <div>
-                  <span className="font-bold text-neutral-800 block">মোবাইল:</span>
+                  <span className="font-bold text-neutral-800 block">Mobile:</span>
                   <span>{selectedOrderForInvoice.customerMobile}</span>
                 </div>
                 <div className="col-span-2">
-                  <span className="font-bold text-neutral-800 block">ডেলিভারি ঠিকানা:</span>
+                  <span className="font-bold text-neutral-800 block">Delivery Address:</span>
                   <span>
                     {selectedOrderForInvoice.district}, {selectedOrderForInvoice.upazila} — {selectedOrderForInvoice.address}
                   </span>
@@ -223,14 +227,14 @@ export const OrderTrackingView: React.FC = () => {
               </div>
 
               <div>
-                <span className="font-bold text-neutral-800 block mb-1">প্রোডাক্ট লিস্ট:</span>
+                <span className="font-bold text-neutral-800 block mb-1">Product List:</span>
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full text-left">
                     <thead className="bg-neutral-100 font-bold border-b">
                       <tr>
-                        <th className="p-2">আইটেম</th>
-                        <th className="p-2 text-center">পরিমাণ</th>
-                        <th className="p-2 text-right">মূল্য</th>
+                        <th className="p-2">Item</th>
+                        <th className="p-2 text-center">Quantity</th>
+                        <th className="p-2 text-right">Price</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -248,15 +252,15 @@ export const OrderTrackingView: React.FC = () => {
 
               <div className="bg-purple-50 p-3 rounded-lg border border-purple-200 space-y-1 font-medium">
                 <div className="flex justify-between">
-                  <span>সাবটোটাল:</span>
+                  <span>Subtotal:</span>
                   <span>৳{selectedOrderForInvoice.subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>ডেলিভারি ফি:</span>
+                  <span>Delivery Fee:</span>
                   <span>৳{selectedOrderForInvoice.deliveryFee.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between font-extrabold text-sm text-[#281044] pt-1 border-t">
-                  <span>মোট পরিশোধযোগ্য:</span>
+                  <span>Total Payable:</span>
                   <span>৳{selectedOrderForInvoice.total.toLocaleString()}</span>
                 </div>
               </div>
@@ -266,7 +270,7 @@ export const OrderTrackingView: React.FC = () => {
               onClick={() => setSelectedOrderForInvoice(null)}
               className="w-full py-2.5 bg-[#281044] text-white font-bold text-xs rounded-xl"
             >
-              বন্ধ করুন
+              Close
             </button>
           </div>
         </div>

@@ -50,14 +50,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {product.videoUrl && (
           <span className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
             <Play className="w-2.5 h-2.5 fill-current" />
-            ভিডিও
+            Video
           </span>
         )}
 
         {/* Stock Tag */}
         {product.stock <= 5 && product.stock > 0 && (
           <span className="absolute bottom-2 left-2 bg-amber-500 text-white text-[10px] font-medium px-2 py-0.5 rounded">
-            স্টক সীমিত ({product.stock} টি)
+            Limited Stock ({product.stock} left)
           </span>
         )}
       </div>
@@ -103,8 +103,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               title="Add to Cart"
             >
               <ShoppingBag className="w-3.5 h-3.5 text-[#281044]" />
-              <span className="hidden xs:inline">কার্টে রাখুন</span>
-              <span className="xs:hidden">+ কার্ট</span>
+              <span className="hidden xs:inline">Add to Cart</span>
+              <span className="xs:hidden">+ Cart</span>
             </button>
 
             <button
@@ -113,7 +113,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               title="Order Now"
             >
               <Zap className="w-3.5 h-3.5 text-amber-300 fill-current" />
-              <span>অর্ডার করুন</span>
+              <span>Order Now</span>
             </button>
           </div>
         </div>

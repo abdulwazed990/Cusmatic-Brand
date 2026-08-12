@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { DEFAULT_ADMIN_SETTINGS, INITIAL_HERO_BANNERS, INITIAL_ORDERS } from '../data/initialData';
-import { MOCK_PRODUCTS } from '../data/mockProducts';
-import { AdminSettings, CartItem, HeroBanner, Order, OrderStatus, Product } from '../types';
+import { MOCK_PRODUCTS, INITIAL_CATEGORIES } from '../data/mockProducts';
+import { AdminSettings, CartItem, Category, HeroBanner, Order, OrderStatus, Product } from '../types';
 
 interface StoreContextType {
   currentView: string;
@@ -18,6 +18,13 @@ interface StoreContextType {
   setLastCreatedOrder: (o: Order | null) => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
+
+  // Categories
+  categories: Category[];
+  addCategory: (categoryData: Omit<Category, 'id'>) => void;
+  updateCategory: (category: Category) => void;
+  deleteCategory: (id: string) => void;
+  reorderCategories: (categories: Category[]) => void;
 
   // Cart
   cart: CartItem[];
@@ -89,6 +96,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState<boolean>(false);
 
   // Persistent States
+  const [categories, setCategories] = useState<Category[]>(() => {
+    try {
+      const saved = localStorage.getItem('rakomart_categories');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((c: Category) => c.id || c.slug));
+          const missing = INITIAL_CATEGORIES.filter((ic) => !existingIds.has(ic.id) && !existingIds.has(ic.slug));
+          return [...parsed, ...missing];
+        }
+      }
+      return INITIAL_CATEGORIES;
+    } catch {
+      return INITIAL_CATEGORIES;
+    }
+  });
+
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('rakomart_cart');
@@ -145,6 +169,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Sync with LocalStorage
   useEffect(() => {
+    localStorage.setItem('rakomart_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
     localStorage.setItem('rakomart_cart', JSON.stringify(cart));
   }, [cart]);
 
@@ -176,6 +204,44 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, 3000);
   };
 
+  // Category Handlers
+  const addCategory = (categoryData: Omit<Category, 'id'>) => {
+    const slug = categoryData.slug || categoryData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+    const newCat: Category = {
+      ...categoryData,
+      id: slug || `cat-${Date.now()}`,
+      slug: slug || `cat-${Date.now()}`,
+      isActive: categoryData.isActive !== undefined ? categoryData.isActive : true,
+      order: categoryData.order || categories.length + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setCategories((prev) => [...prev, newCat]);
+    showToast(`Category "${newCat.name}" created.`);
+  };
+
+  const updateCategory = (updatedCategory: Category) => {
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id === updatedCategory.id || c.slug === updatedCategory.slug
+          ? { ...c, ...updatedCategory, updatedAt: new Date().toISOString() }
+          : c
+      )
+    );
+    showToast(`Category "${updatedCategory.name}" updated.`);
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id && c.slug !== id));
+    showToast('Category deleted.');
+  };
+
+  const reorderCategories = (newCategories: Category[]) => {
+    const reordered = newCategories.map((c, idx) => ({ ...c, order: idx + 1 }));
+    setCategories(reordered);
+    showToast('Categories reordered.');
+  };
+
   // Cart Handlers
   const addToCart = (product: Product, quantity = 1) => {
     setCart((prevCart) => {
@@ -188,7 +254,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return [...prevCart, { product, quantity }];
       }
     });
-    showToast(`"${product.title.slice(0, 24)}..." কার্টে যোগ করা হয়েছে!`);
+    showToast(`"${product.title.slice(0, 24)}..." added to cart!`);
   };
 
   const removeFromCart = (productId: string) => {
@@ -219,17 +285,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: `prod-${Date.now()}`,
     };
     setProducts((prev) => [newProduct, ...prev]);
-    showToast('নতুন পন্য সফলভাবে যোগ করা হয়েছে!');
+    showToast('New product added successfully!');
   };
 
   const updateProduct = (updatedProduct: Product) => {
     setProducts((prev) => prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p)));
-    showToast('পন্যের তথ্য আপডেট করা হয়েছে!');
+    showToast('Product updated successfully!');
   };
 
   const deleteProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
-    showToast('পন্যটি মুছে ফেলা হয়েছে।');
+    showToast('Product deleted.');
   };
 
   // Order Handlers
@@ -269,7 +335,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, orderStatus: status } : o))
     );
-    showToast(`অর্ডার #${orderId} স্ট্যাটাস পরিবর্তন করা হয়েছে: ${status}`);
+    showToast(`Order #${orderId} status updated: ${status}`);
   };
 
   const verifyPayment = (orderId: string, status: 'VERIFIED' | 'REJECTED') => {
@@ -286,7 +352,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return o;
       })
     );
-    showToast(`অর্ডার #${orderId} পেমেন্ট ${status === 'VERIFIED' ? 'অনুমোদিত' : 'বাতিল'} করা হয়েছে।`);
+    showToast(`Order #${orderId} payment ${status === 'VERIFIED' ? 'verified' : 'rejected'}.`);
   };
 
   const archiveOrder = (orderId: string, reason: string) => {
@@ -301,7 +367,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setArchivedOrders((prev) => [archived, ...prev]);
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
-    showToast(`অর্ডার #${orderId} আর্কাইভ ও ডিলিট হিস্ট্রিতে স্থানান্তরিত করা হয়েছে।`);
+    showToast(`Order #${orderId} archived and moved to deleted history.`);
   };
 
   const searchCustomerOrders = (mobileNumber: string): Order[] => {
@@ -321,23 +387,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: `banner-${Date.now()}`,
     };
     setBanners((prev) => [...prev, newBanner]);
-    showToast('নতুন হিরো কভার ব্যানার যোগ করা হয়েছে।');
+    showToast('New hero cover banner added.');
   };
 
   const updateBanner = (updatedBanner: HeroBanner) => {
     setBanners((prev) => prev.map((b) => (b.id === updatedBanner.id ? updatedBanner : b)));
-    showToast('কভার ব্যানার আপডেট করা হয়েছে।');
+    showToast('Cover banner updated.');
   };
 
   const deleteBanner = (id: string) => {
     setBanners((prev) => prev.filter((b) => b.id !== id));
-    showToast('কভার ব্যানার মুছে ফেলা হয়েছে।');
+    showToast('Cover banner deleted.');
   };
 
   // Settings Handlers
   const updateSettings = (newSettings: Partial<AdminSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
-    showToast('ওয়েবসাইট সেটিংস সফলভাবে সেভ করা হয়েছে!');
+    showToast('Website settings saved successfully!');
   };
 
   // Global Navigation Helper
@@ -372,6 +438,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setLastCreatedOrder,
         toastMessage,
         showToast,
+
+        categories,
+        addCategory,
+        updateCategory,
+        deleteCategory,
+        reorderCategories,
 
         cart,
         addToCart,

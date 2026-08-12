@@ -1,5 +1,5 @@
 import React from 'react';
-import { Facebook, Phone, Mail, ShieldCheck, Truck, Lock, Heart, Award } from 'lucide-react';
+import { Facebook, Instagram, Phone, Mail, ShieldCheck, Truck, Heart, Award } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { RakoMartLogo } from './RakoMartLogo';
 
@@ -14,23 +14,37 @@ export const Footer: React.FC = () => {
           <div className="space-y-4">
             <RakoMartLogo size="lg" onClick={() => navigateTo('home')} />
             <p className="text-xs text-purple-200/90 leading-relaxed font-sans mt-3">
-              “At RakoMart, we don't just sell products; we curate better choices for your lifestyle. Whether it's daily necessities or lifestyle essentials, our commitment is simple: delivering superior quality, authentic products, and a seamless shopping experience.”
+              At RakoMart, we don't just sell products — we curate better choices for your lifestyle. From daily essentials to authentic skincare, we are committed to superior quality and a seamless shopping experience.
             </p>
             <div className="pt-1">
-              <span className="inline-block text-xs font-semibold text-purple-300 font-bengali bg-purple-900/60 px-3 py-1 rounded-full border border-purple-700/50">
-                “Don't just shop — choose better, choose রকমর্ট”
-              </span>
+              <button
+                type="button"
+                onClick={() => navigateTo('admin')}
+                className="inline-block text-xs font-semibold text-purple-300 bg-purple-900/60 px-3 py-1 rounded-full border border-purple-700/50 hover:bg-purple-800/80 hover:text-white transition-all text-left cursor-pointer select-none"
+                title="RakoMart"
+              >
+                RakoMart — Better Living, Delivered
+              </button>
             </div>
-            {/* Facebook Badge Link */}
-            <div className="pt-2">
+            {/* Social Links (Facebook & Instagram) */}
+            <div className="pt-2 flex flex-wrap items-center gap-2">
               <a
-                href="https://www.facebook.com/share/198QLN5TSt/?mibextid=wwXIfr"
+                href="https://www.facebook.com/share/1BhVJTWSjz/?mibextid=wwXIfr"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 px-3.5 py-1.5 rounded-lg border border-blue-500/40 text-xs font-medium transition-all"
               >
                 <Facebook className="w-4 h-4 text-blue-400 fill-current" />
-                ফেইসবুক পেজে যুক্ত থাকুন
+                Connect on Facebook
+              </a>
+              <a
+                href="https://www.instagram.com/rakomart2513/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-pink-600/20 hover:bg-pink-600/30 text-pink-300 px-3.5 py-1.5 rounded-lg border border-pink-500/40 text-xs font-medium transition-all"
+              >
+                <Instagram className="w-4 h-4 text-pink-400" />
+                Connect on Instagram
               </a>
             </div>
           </div>
@@ -38,27 +52,27 @@ export const Footer: React.FC = () => {
           {/* Column 2: Quick Links */}
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-white uppercase tracking-wider border-l-2 border-purple-400 pl-2">
-              ন্যাভিগেশন & লিংক
+              QUICK LINKS
             </h4>
             <ul className="space-y-2 text-xs text-purple-200">
               <li>
                 <button onClick={() => navigateTo('home')} className="hover:text-white transition-colors">
-                  হোমপেজ (Home)
+                  Home
                 </button>
               </li>
               <li>
                 <button onClick={() => navigateTo('products')} className="hover:text-white transition-colors">
-                  সকল কসমেটিকস প্রোডাক্ট
+                  All Products
                 </button>
               </li>
               <li>
                 <button onClick={() => navigateTo('order_tracking')} className="hover:text-white transition-colors">
-                  মোবাইল নম্বর দিয়ে অর্ডার ট্র্যাক
+                  Track Order
                 </button>
               </li>
               <li>
                 <button onClick={() => navigateTo('support')} className="hover:text-white transition-colors">
-                  কাস্টমার কেয়ার হেল্পলাইন
+                  Customer Support
                 </button>
               </li>
               <li>
@@ -66,16 +80,16 @@ export const Footer: React.FC = () => {
                   onClick={() => navigateTo('info_page', { infoPage: 'about' })}
                   className="hover:text-white transition-colors"
                 >
-                  আমাদের সম্পর্কে (About Us)
+                  About Us
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Customer Policies */}
+          {/* Column 3: Customer Care */}
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-white uppercase tracking-wider border-l-2 border-purple-400 pl-2">
-              নীতিমালা & কাস্টমার সাপোর্ট
+              CUSTOMER CARE
             </h4>
             <ul className="space-y-2 text-xs text-purple-200">
               <li>
@@ -83,7 +97,7 @@ export const Footer: React.FC = () => {
                   onClick={() => navigateTo('info_page', { infoPage: 'delivery' })}
                   className="hover:text-white transition-colors"
                 >
-                  ডেলিভারি ও চার্জ নীতিমালা
+                  Shipping & Delivery Policy
                 </button>
               </li>
               <li>
@@ -91,7 +105,7 @@ export const Footer: React.FC = () => {
                   onClick={() => navigateTo('info_page', { infoPage: 'privacy' })}
                   className="hover:text-white transition-colors"
                 >
-                  প্রাইভেসি পলিসি (Privacy Policy)
+                  Privacy Policy
                 </button>
               </li>
               <li>
@@ -99,18 +113,18 @@ export const Footer: React.FC = () => {
                   onClick={() => navigateTo('info_page', { infoPage: 'terms' })}
                   className="hover:text-white transition-colors"
                 >
-                  টার্মস ও কন্ডিশনস (Terms of Service)
+                  Terms of Service
                 </button>
               </li>
               <li>
                 <a
-                  href={`https://wa.me/${settings.customerCarePhone.replace(/\D/g, '')}`}
+                  href={`https://wa.me/8801410425948`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-emerald-300 font-medium hover:underline inline-flex items-center gap-1 mt-1"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  হোয়াটসঅ্যাপ হেল্পলাইন: {settings.customerCarePhone}
+                  WhatsApp Support: +8801410425948
                 </a>
               </li>
             </ul>
@@ -119,22 +133,22 @@ export const Footer: React.FC = () => {
           {/* Column 4: Quality Commitment & Payment Badges */}
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-white uppercase tracking-wider border-l-2 border-purple-400 pl-2">
-              আমাদের অঙ্গীকার
+              Our Commitment
             </h4>
             <div className="space-y-2 text-xs text-purple-200">
               <div className="flex items-start gap-2.5 bg-purple-950/60 p-2.5 rounded-lg border border-purple-800/40">
                 <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-white block">১০০% আসল প্রোডাক্ট</span>
-                  <span className="text-[11px] text-purple-300">সরাসরি বিশ্বস্ত ইম্পোর্টারদের থেকে সংগৃহীত।</span>
+                  <span className="font-semibold text-white block">100% Authentic Products</span>
+                  <span className="text-[11px] text-purple-300">Sourced directly from authorized importers.</span>
                 </div>
               </div>
 
               <div className="flex items-start gap-2.5 bg-purple-950/60 p-2.5 rounded-lg border border-purple-800/40">
                 <Truck className="w-5 h-5 text-purple-300 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-white block">সারাদেশে নিরাপদ ডেলিভারি</span>
-                  <span className="text-[11px] text-purple-300">ক্যাশ অন ডেলিভারি, বিকাশ ও নগদ পেমেন্ট সুবিধাসহ।</span>
+                  <span className="font-semibold text-white block">Safe Nationwide Delivery</span>
+                  <span className="text-[11px] text-purple-300">Cash on Delivery, bKash & Nagad payments available.</span>
                 </div>
               </div>
             </div>
@@ -148,16 +162,13 @@ export const Footer: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-[11px] text-purple-400">RakoMart — Better Living, Delivered.</span>
-            
-            {/* Discreet Admin Link */}
             <button
+              type="button"
               onClick={() => navigateTo('admin')}
-              className="text-purple-400/60 hover:text-purple-200 text-[11px] flex items-center gap-1 transition-colors px-2 py-0.5 rounded border border-purple-800/30 hover:border-purple-600/50"
-              title="Admin Panel Access"
+              className="text-[11px] text-purple-400 hover:text-purple-200 transition-colors select-none cursor-pointer"
+              title="RakoMart"
             >
-              <Lock className="w-3 h-3" />
-              <span>Admin</span>
+              RakoMart — Better Living, Delivered.
             </button>
           </div>
         </div>

@@ -15,43 +15,17 @@ export const Header: React.FC = () => {
   } = useStore();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigateTo('products');
-      setIsSearchOpen(false);
     }
   };
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-neutral-200 shadow-xs">
-      {/* Top Announcement Bar */}
-      <div className="bg-[#281044] text-purple-100 text-xs py-1.5 px-4 font-medium flex items-center justify-between border-b border-purple-900/50">
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-2 overflow-hidden">
-          <div className="flex items-center gap-2 truncate">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="truncate">{settings.siteNotice || '১০০% অরিজিনাল কসমেটিকস গ্যারান্টি | দ্রুত ক্যাশ অন ডেলিভারি'}</span>
-          </div>
 
-          <div className="hidden md:flex items-center gap-6 text-[11px] text-purple-200 shrink-0">
-            <span className="flex items-center gap-1">
-              <Truck className="w-3.5 h-3.5 text-purple-300" />
-              ঢাকার ভেতরে ৳{settings.deliveryInsideDhaka} | বাইরে ৳{settings.deliveryOutsideDhaka}
-            </span>
-            <a
-              href={`https://wa.me/${settings.customerCarePhone.replace(/\D/g, '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 hover:text-white transition-colors"
-            >
-              <Phone className="w-3.5 h-3.5 text-emerald-400" />
-              হেল্পলাইন: {settings.customerCarePhone}
-            </a>
-          </div>
-        </div>
-      </div>
 
       {/* Main Header Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-4">
@@ -75,7 +49,7 @@ export const Header: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="পছন্দের কসমেটিকস বা প্রোডাক্ট খুঁজুন... (e.g. Snail Essence, Sunscreen)"
+              placeholder="Search beauty essentials... (e.g. Snail Essence, Sunscreen)"
               className="w-full pl-10 pr-24 py-2 bg-neutral-100/80 border border-neutral-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-[#281044]/30 focus:border-[#281044] transition-all"
             />
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -83,56 +57,13 @@ export const Header: React.FC = () => {
               type="submit"
               className="absolute right-1 top-1/2 -translate-y-1/2 bg-[#281044] hover:bg-[#3b1763] text-white text-xs px-3.5 py-1.5 rounded-full font-medium transition-colors"
             >
-              খুঁজুন
+              Search
             </button>
           </form>
         </div>
 
-        {/* RIGHT: Actions (Tracking, Support, Cart, Facebook link) */}
+        {/* RIGHT: Actions (Cart) */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Search Toggle for Mobile */}
-          <button
-            onClick={() => setIsSearchOpen(!isSearchOpen)}
-            className="md:hidden p-2 text-neutral-700 hover:text-[#281044] hover:bg-neutral-100 rounded-lg transition-colors"
-            title="Search"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-
-          {/* Order Tracking */}
-          <button
-            onClick={() => navigateTo('order_tracking')}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${
-              currentView === 'order_tracking'
-                ? 'bg-purple-50 text-[#281044] border-[#281044]'
-                : 'border-neutral-200 text-neutral-700 hover:border-purple-300 hover:text-[#281044]'
-            }`}
-          >
-            <Truck className="w-3.5 h-3.5 text-[#281044]" />
-            অর্ডার ট্র্যাক
-          </button>
-
-          {/* Customer Care / Support Link */}
-          <button
-            onClick={() => navigateTo('support')}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:text-[#281044] transition-colors"
-          >
-            <HeartHandshake className="w-4 h-4 text-purple-700" />
-            সাপোর্ট
-          </button>
-
-          {/* Facebook Official Page Link */}
-          <a
-            href="https://www.facebook.com/share/198QLN5TSt/?mibextid=wwXIfr"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-full transition-all hover:scale-105 border border-blue-200"
-            title="RakoMart Official Facebook Page"
-            aria-label="Facebook Page"
-          >
-            <Facebook className="w-5 h-5 fill-current" />
-          </a>
-
           {/* Cart Drawer Trigger */}
           <button
             onClick={() => setIsCartDrawerOpen(true)}
@@ -159,7 +90,7 @@ export const Header: React.FC = () => {
               currentView === 'home' ? 'border-[#281044] text-[#281044]' : 'border-transparent hover:text-[#281044]'
             }`}
           >
-            হোমপেজ (Home)
+            Home
           </button>
           <button
             onClick={() => {
@@ -169,7 +100,7 @@ export const Header: React.FC = () => {
               currentView === 'products' ? 'border-[#281044] text-[#281044]' : 'border-transparent hover:text-[#281044]'
             }`}
           >
-            সকল প্রোডাক্ট (All Cosmetics)
+            All Cosmetics
           </button>
           <button
             onClick={() => navigateTo('order_tracking')}
@@ -177,7 +108,7 @@ export const Header: React.FC = () => {
               currentView === 'order_tracking' ? 'border-[#281044] text-[#281044]' : 'border-transparent hover:text-[#281044]'
             }`}
           >
-            অর্ডার ট্র্যাকিং
+            Order Tracking
           </button>
           <button
             onClick={() => navigateTo('support')}
@@ -185,44 +116,38 @@ export const Header: React.FC = () => {
               currentView === 'support' ? 'border-[#281044] text-[#281044]' : 'border-transparent hover:text-[#281044]'
             }`}
           >
-            কাস্টমার কেয়ার & সাপোর্ট
+            Customer Care & Support
           </button>
-
-          <div className="ml-auto flex items-center gap-2 text-emerald-700 font-medium">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>১০০% অরিজিনাল কসমেটিকসের নিশ্চয়তা</span>
-          </div>
         </div>
       </nav>
 
-      {/* Mobile Search Expand Bar */}
-      {isSearchOpen && (
-        <div className="md:hidden bg-neutral-50 p-3 border-t border-neutral-200 animate-fadeIn">
-          <form onSubmit={handleSearchSubmit} className="relative w-full">
+      {/* Mobile Full Search Bar Section (Below Mobile Header, Above Main Cover / Video Section) */}
+      <div className="md:hidden bg-neutral-50 border-t border-neutral-200/80 px-3.5 py-2.5">
+        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 max-w-md mx-auto">
+          <div className="relative flex-1">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="পণ্য খুঁজুন (e.g. Lip Tint, Serum)..."
-              className="w-full pl-9 pr-20 py-2 bg-white border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#281044]"
-              autoFocus
+              placeholder="Search beauty essentials..."
+              className="w-full pl-9 pr-3 py-2 bg-white border border-neutral-300 rounded-full text-xs text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#281044]/30 focus:border-[#281044] transition-all"
             />
-            <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <button
-              type="submit"
-              className="absolute right-1 top-1/2 -translate-y-1/2 bg-[#281044] text-white text-xs px-3 py-1.5 rounded-md font-medium"
-            >
-              খুঁজুন
-            </button>
-          </form>
-        </div>
-      )}
+            <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+          <button
+            type="submit"
+            className="bg-[#281044] hover:bg-[#3b1763] active:scale-95 text-white text-xs px-4 py-2 rounded-full font-bold transition-all shrink-0 shadow-2xs"
+          >
+            Search
+          </button>
+        </form>
+      </div>
 
       {/* Mobile Nav Drawer */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-neutral-200 px-4 pt-3 pb-6 space-y-3 shadow-lg">
           <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
-            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">মেনু নির্বাচন করুন</span>
+            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Select Menu</span>
             <button onClick={() => setIsMobileMenuOpen(false)} className="text-neutral-500">
               <X className="w-5 h-5" />
             </button>
@@ -236,7 +161,7 @@ export const Header: React.FC = () => {
               }}
               className="text-left py-2.5 px-3 rounded-lg text-sm font-medium hover:bg-purple-50 hover:text-[#281044]"
             >
-              🏠 হোমপেজ
+              🏠 Home
             </button>
             <button
               onClick={() => {
@@ -245,7 +170,7 @@ export const Header: React.FC = () => {
               }}
               className="text-left py-2.5 px-3 rounded-lg text-sm font-medium hover:bg-purple-50 hover:text-[#281044]"
             >
-              💄 সকল কসমেটিকস প্রোডাক্ট
+              💄 All Cosmetics Products
             </button>
             <button
               onClick={() => {
@@ -254,7 +179,7 @@ export const Header: React.FC = () => {
               }}
               className="text-left py-2.5 px-3 rounded-lg text-sm font-medium hover:bg-purple-50 hover:text-[#281044]"
             >
-              🚚 মোবাইল দিয়ে অর্ডার ট্র্যাক করুন
+              🚚 Track Your Order
             </button>
             <button
               onClick={() => {
@@ -263,19 +188,19 @@ export const Header: React.FC = () => {
               }}
               className="text-left py-2.5 px-3 rounded-lg text-sm font-medium hover:bg-purple-50 hover:text-[#281044]"
             >
-              📞 কাস্টমার কেয়ার হেল্পলাইন
+              📞 Customer Care & Support
             </button>
           </div>
 
           <div className="pt-2 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-600">
             <a
-              href="https://www.facebook.com/share/198QLN5TSt/?mibextid=wwXIfr"
+              href="https://www.facebook.com/share/1BhVJTWSjz/?mibextid=wwXIfr"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-blue-600 font-medium py-1"
             >
               <Facebook className="w-4 h-4 fill-current" />
-              অফিসিয়াল ফেইসবুক পেজ
+              Official Facebook Page
             </a>
           </div>
         </div>

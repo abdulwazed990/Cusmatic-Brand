@@ -67,7 +67,7 @@ export const CustomerSupportView: React.FC = () => {
           </p>
 
           <a
-            href="https://www.facebook.com/share/198QLN5TSt/?mibextid=wwXIfr"
+            href="https://www.facebook.com/share/1BhVJTWSjz/?mibextid=wwXIfr"
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.99]"

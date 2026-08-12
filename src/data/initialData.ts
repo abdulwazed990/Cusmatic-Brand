@@ -10,7 +10,8 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   customerCarePhone: '8801894567890',
   deliveryInsideDhaka: 70,
   deliveryOutsideDhaka: 150,
-  siteNotice: '🚚 ১০০০ টাকার বেশি অর্ডারে দ্রুত ডেলিভারি সুবিধা! শতভাগ অরিজিনাল কসমেটিকস গ্যারান্টি।',
+  siteNotice: '🚚 Fast express delivery on orders over ৳1000! 100% authentic cosmetics guarantee.',
+  siteLogoUrl: '/rakomart-official-logo.jpg',
 };
 
 export const INITIAL_HERO_BANNERS: HeroBanner[] = [
@@ -19,7 +20,7 @@ export const INITIAL_HERO_BANNERS: HeroBanner[] = [
     title: 'Better Living, Delivered.',
     subtitle: 'From routine needs to home essentials, find everything designed to make your daily life smoother and better.',
     image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1600&auto=format&fit=crop&q=80',
-    buttonText: 'Shop Cosmetics',
+    buttonText: '',
     link: '#products',
     isActive: true,
     order: 1,
@@ -27,19 +28,19 @@ export const INITIAL_HERO_BANNERS: HeroBanner[] = [
   {
     id: 'banner-2',
     title: 'Where Variety Meets Uncompromised Quality.',
-    subtitle: '100% authentic international skincare & lifestyle brands delivered directly to your doorstep across Bangladesh.',
+    subtitle: '100% authentic international skincare & lifestyle brands delivered directly to your doorstep.',
     image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1600&auto=format&fit=crop&q=80',
-    buttonText: 'Explore Skincare',
+    buttonText: '',
     link: '#products',
     isActive: true,
     order: 2,
   },
   {
     id: 'banner-3',
-    title: 'Don\'t just shop — choose better, choose রকমর্ট',
+    title: 'Don\'t just shop — choose better, choose RakoMart',
     subtitle: 'Curated premium cosmetics, sunscreens, hair serums & luxury fragrances with bKash, Nagad & Cash on Delivery.',
     image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=1600&auto=format&fit=crop&q=80',
-    buttonText: 'View Bestsellers',
+    buttonText: '',
     link: '#products',
     isActive: true,
     order: 3,
