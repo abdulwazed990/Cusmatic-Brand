@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Lock, LayoutDashboard, ShoppingCart, Package, Image as ImageIcon,
   Settings, Archive, BarChart3, CheckCircle2, XCircle, Trash2, Edit,
-  Plus, Search, ArrowLeft, RefreshCw, Eye, FolderTree, ArrowUp, ArrowDown, Upload, Tag, Video, Loader2, Sparkles, AlertCircle
+  Plus, Search, ArrowLeft, RefreshCw, Eye, FolderTree, ArrowUp, ArrowDown, Upload, Tag, Video, Loader2, Sparkles, AlertCircle,
+  Monitor, Smartphone
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus, Product, HeroBanner, Category } from '../types';
@@ -61,7 +62,19 @@ export const AdminPanel: React.FC = () => {
   const [editingBanner, setEditingBanner] = useState<HeroBanner | null>(null);
   const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
   const [bannerFormData, setBannerFormData] = useState<Omit<HeroBanner, 'id'>>({
-    title: '', subtitle: '', image: '', videoUrl: '', mediaType: 'image', position: 'hero1', buttonText: 'Shop Now', link: '#products', isActive: true, order: 1
+    title: '',
+    subtitle: '',
+    image: '',
+    videoUrl: '',
+    mediaType: 'image',
+    mobileImage: '',
+    mobileVideoUrl: '',
+    mobileMediaType: 'image',
+    position: 'hero1',
+    buttonText: 'Shop Now',
+    link: '#products',
+    isActive: true,
+    order: 1
   });
 
   // Archive modal
@@ -916,51 +929,93 @@ export const AdminPanel: React.FC = () => {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="font-extrabold text-base text-[#281044]">Homepage Cover Banners & Video Banners</h3>
-              <p className="text-xs text-neutral-500">Upload video or image cover banners for the homepage hero carousel.</p>
+              <h3 className="font-extrabold text-base text-[#281044]">Hero Banner 1 & Hero Banner 2 Management</h3>
+              <p className="text-xs text-neutral-500">Manage responsive Desktop (1920×900) & Mobile (1080×1350) media for Hero Banners.</p>
             </div>
             <button
               onClick={() => {
                 setEditingBanner(null);
                 setBannerFormData({
-                  title: '', subtitle: '', image: '', videoUrl: '', mediaType: 'image', position: 'hero1', buttonText: 'Shop Now', link: '#products', isActive: true, order: banners.length + 1
+                  title: '',
+                  subtitle: '',
+                  image: '',
+                  videoUrl: '',
+                  mediaType: 'image',
+                  mobileImage: '',
+                  mobileVideoUrl: '',
+                  mobileMediaType: 'image',
+                  position: 'hero1',
+                  buttonText: 'Shop Now',
+                  link: '#products',
+                  isActive: true,
+                  order: banners.length + 1
                 });
                 setIsBannerModalOpen(true);
               }}
-              className="bg-[#281044] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"
+              className="bg-[#281044] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs hover:bg-[#3b1763] transition-colors"
             >
               <Plus className="w-4 h-4" />
-              <span>Add New Cover / Video Banner</span>
+              <span>Add New Hero Banner</span>
             </button>
           </div>
 
           <div className="space-y-3">
             {banners.map((b) => {
-              const isVideoBanner = b.mediaType === 'video' || (b.videoUrl && b.videoUrl.trim().length > 0);
-              const previewSrc = isVideoBanner ? (b.videoUrl || b.image) : b.image;
+              const isDesktopVideo = b.mediaType === 'video' || (b.videoUrl && b.videoUrl.trim().length > 0);
+              const desktopSrc = isDesktopVideo ? (b.videoUrl || b.image) : b.image;
+              const hasMobileMedia = !!(b.mobileImage || b.mobileVideoUrl);
+              const isMobileVideo = b.mobileMediaType === 'video' || (b.mobileVideoUrl && b.mobileVideoUrl.trim().length > 0);
+              const mobileSrc = isMobileVideo ? (b.mobileVideoUrl || b.mobileImage) : (b.mobileImage || desktopSrc);
 
               return (
                 <div key={b.id} className="bg-white p-4 rounded-xl border border-neutral-200 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-2xs">
-                  <div className="relative w-32 h-20 rounded-lg overflow-hidden bg-neutral-900 border border-neutral-200 shrink-0 flex items-center justify-center">
-                    {isVideoBanner ? (
-                      <video src={previewSrc} className="w-full h-full object-cover" muted />
-                    ) : (
-                      <img src={previewSrc} alt={b.title || 'Banner'} className="w-full h-full object-cover" />
-                    )}
-                    {isVideoBanner && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
-                        <Video className="w-6 h-6 text-purple-300" />
+                  {/* Desktop Media Thumbnail */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative w-28 h-16 rounded-lg overflow-hidden bg-neutral-900 border border-neutral-200 shrink-0 flex items-center justify-center group/desk">
+                      {isDesktopVideo ? (
+                        <video src={desktopSrc} className="w-full h-full object-contain bg-black" muted />
+                      ) : (
+                        <img src={desktopSrc} alt={b.title || 'Desktop Banner'} className="w-full h-full object-contain bg-neutral-950" />
+                      )}
+                      <div className="absolute top-1 left-1 bg-black/70 text-white text-[8px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5">
+                        <Monitor className="w-2.5 h-2.5" />
+                        <span>1920×900</span>
                       </div>
-                    )}
+                      {isDesktopVideo && (
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white">
+                          <Video className="w-4 h-4 text-purple-300" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Mobile Media Thumbnail */}
+                    <div className="relative w-12 h-16 rounded-lg overflow-hidden bg-neutral-900 border border-neutral-200 shrink-0 flex items-center justify-center">
+                      {isMobileVideo ? (
+                        <video src={mobileSrc} className="w-full h-full object-contain bg-black" muted />
+                      ) : (
+                        <img src={mobileSrc} alt={b.title || 'Mobile Banner'} className="w-full h-full object-contain bg-neutral-950" />
+                      )}
+                      <div className="absolute top-1 left-1 bg-black/70 text-white text-[8px] font-bold px-0.5 py-0.5 rounded flex items-center justify-center">
+                        <Smartphone className="w-2.5 h-2.5" />
+                      </div>
+                      {isMobileVideo && (
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white">
+                          <Video className="w-3 h-3 text-purple-300" />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${isVideoBanner ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'bg-blue-100 text-blue-900 border border-blue-300'}`}>
-                        {isVideoBanner ? 'Video Banner' : 'Image Banner'}
-                      </span>
                       <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${b.position === 'hero2' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-indigo-100 text-indigo-900 border border-indigo-300'}`}>
                         {b.position === 'hero2' ? '2nd Hero Banner' : '1st Hero Banner'}
+                      </span>
+                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${isDesktopVideo ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'bg-blue-100 text-blue-900 border border-blue-300'}`}>
+                        {isDesktopVideo ? 'Desktop Video' : 'Desktop Image'}
+                      </span>
+                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${hasMobileMedia ? (isMobileVideo ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'bg-emerald-100 text-emerald-900 border border-emerald-300') : 'bg-neutral-100 text-neutral-600 border border-neutral-300'}`}>
+                        {hasMobileMedia ? (isMobileVideo ? 'Mobile Video' : 'Mobile Custom Image') : 'Mobile (Auto-Fit)'}
                       </span>
                       <h4 className="font-bold text-sm text-[#281044] truncate">{b.title || 'Untitled Banner'}</h4>
                     </div>
@@ -974,17 +1029,31 @@ export const AdminPanel: React.FC = () => {
                     <button
                       onClick={() => {
                         setEditingBanner(b);
-                        setBannerFormData(b);
+                        setBannerFormData({
+                          title: b.title || '',
+                          subtitle: b.subtitle || '',
+                          image: b.image || '',
+                          videoUrl: b.videoUrl || '',
+                          mediaType: b.mediaType || 'image',
+                          mobileImage: b.mobileImage || '',
+                          mobileVideoUrl: b.mobileVideoUrl || '',
+                          mobileMediaType: b.mobileMediaType || 'image',
+                          position: b.position || 'hero1',
+                          buttonText: b.buttonText || 'Shop Now',
+                          link: b.link || '#products',
+                          isActive: b.isActive !== undefined ? b.isActive : true,
+                          order: b.order || 1
+                        });
                         setIsBannerModalOpen(true);
                       }}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                       title="Edit Banner"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => deleteBanner(b.id)}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                       title="Delete Banner"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1741,15 +1810,22 @@ export const AdminPanel: React.FC = () => {
       {/* Add / Edit Banner Modal */}
       {isBannerModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <form onSubmit={handleSaveBanner} className="bg-white p-6 rounded-2xl max-w-lg w-full space-y-3.5 text-xs max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-sm text-[#281044] border-b pb-2 flex items-center justify-between">
-              <span>{editingBanner ? 'Edit Cover Banner' : 'Add New Cover Banner'}</span>
-              <span className="text-[10px] text-neutral-500 font-normal">Supports Video & Image files</span>
-            </h3>
+          <form onSubmit={handleSaveBanner} className="bg-white p-6 rounded-2xl max-w-2xl w-full space-y-4 text-xs max-h-[90vh] overflow-y-auto">
+            <div className="border-b pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="font-extrabold text-base text-[#281044]">
+                  {editingBanner ? 'Edit Hero Banner' : 'Add New Hero Banner'}
+                </h3>
+                <p className="text-[11px] text-neutral-500">Configure separate Desktop and Mobile media for crisp, uncropped display.</p>
+              </div>
+              <span className="text-[10px] bg-purple-100 text-purple-900 font-bold px-2.5 py-1 rounded-full border border-purple-200">
+                Responsive Sizing
+              </span>
+            </div>
 
             {/* Banner Placement Selector */}
             <div>
-              <label className="block font-bold mb-1 text-[#281044]">Select Banner Placement / Position</label>
+              <label className="block font-bold mb-1.5 text-[#281044]">Select Banner Placement / Position</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -1757,7 +1833,7 @@ export const AdminPanel: React.FC = () => {
                   className={`p-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
                     (bannerFormData.position || 'hero1') === 'hero1'
                       ? 'bg-[#281044] text-white border-[#281044] shadow-xs'
-                      : 'bg-neutral-50 text-neutral-600 border-neutral-200'
+                      : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100'
                   }`}
                 >
                   <span>1st Hero Banner (Top Carousel)</span>
@@ -1768,7 +1844,7 @@ export const AdminPanel: React.FC = () => {
                   className={`p-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
                     bannerFormData.position === 'hero2'
                       ? 'bg-purple-900 text-white border-purple-900 shadow-xs'
-                      : 'bg-neutral-50 text-neutral-600 border-neutral-200'
+                      : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100'
                   }`}
                 >
                   <span>2nd Hero Banner (Brand Showcase)</span>
@@ -1776,41 +1852,10 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Media Type Selector */}
-            <div>
-              <label className="block font-bold mb-1 text-[#281044]">Banner Media Type</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBannerFormData({ ...bannerFormData, mediaType: 'image' })}
-                  className={`p-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
-                    bannerFormData.mediaType !== 'video'
-                      ? 'bg-[#281044] text-white border-[#281044]'
-                      : 'bg-neutral-50 text-neutral-600 border-neutral-200'
-                  }`}
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  <span>Image Banner</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBannerFormData({ ...bannerFormData, mediaType: 'video' })}
-                  className={`p-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
-                    bannerFormData.mediaType === 'video'
-                      ? 'bg-purple-900 text-white border-purple-900'
-                      : 'bg-neutral-50 text-neutral-600 border-neutral-200'
-                  }`}
-                >
-                  <Video className="w-4 h-4" />
-                  <span>Video Banner</span>
-                </button>
-              </div>
-            </div>
-
             {/* Title & Subtitle */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold mb-1">
+                <label className="block font-bold mb-1 text-neutral-700">
                   Banner Main Title <span className="text-neutral-400 font-normal text-[11px]">(Optional)</span>
                 </label>
                 <input
@@ -1818,11 +1863,11 @@ export const AdminPanel: React.FC = () => {
                   placeholder="e.g., Premium Skincare Collection"
                   value={bannerFormData.title || ''}
                   onChange={(e) => setBannerFormData({ ...bannerFormData, title: e.target.value })}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded-lg focus:ring-1 focus:ring-[#281044] outline-hidden"
                 />
               </div>
               <div>
-                <label className="block font-bold mb-1">
+                <label className="block font-bold mb-1 text-neutral-700">
                   Banner Subtitle / Tagline <span className="text-neutral-400 font-normal text-[11px]">(Optional)</span>
                 </label>
                 <input
@@ -1830,137 +1875,320 @@ export const AdminPanel: React.FC = () => {
                   placeholder="e.g., Authentic Beauty & Luxury Essentials"
                   value={bannerFormData.subtitle || ''}
                   onChange={(e) => setBannerFormData({ ...bannerFormData, subtitle: e.target.value })}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded-lg focus:ring-1 focus:ring-[#281044] outline-hidden"
                 />
               </div>
             </div>
 
-            {/* File Upload Box */}
-            <div className="space-y-2 p-3 bg-neutral-50 rounded-xl border border-neutral-200">
-              <label className="block font-bold text-[#281044]">
-                {bannerFormData.mediaType === 'video' ? 'Upload Video File (MP4, WebM)' : 'Upload Image File (JPG, PNG, WebP)'}
-              </label>
+            {/* ========================================================================= */}
+            {/* OPTION 1: DESKTOP HERO MEDIA (Recommended: 1920 × 900 px) */}
+            {/* ========================================================================= */}
+            <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-200 space-y-3">
+              <div className="flex items-center justify-between border-b border-purple-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <Monitor className="w-4 h-4 text-[#281044]" />
+                  <span className="font-bold text-xs text-[#281044]">1. Desktop Hero Media</span>
+                </div>
+                <span className="text-[10px] text-neutral-600 bg-white px-2 py-0.5 rounded border border-purple-200 font-medium">
+                  Recommended: 1920 × 900 px
+                </span>
+              </div>
 
-              <label className="cursor-pointer bg-[#281044] text-white px-3.5 py-2 rounded-lg font-bold text-xs inline-flex items-center justify-center gap-2 hover:bg-[#3b1763] transition-colors w-full">
-                <Upload className="w-4 h-4" />
-                <span>Select {bannerFormData.mediaType === 'video' ? 'Video' : 'Image'} File from Computer</span>
-                <input
-                  type="file"
-                  accept={bannerFormData.mediaType === 'video' ? 'video/*' : 'image/*'}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (bannerFormData.mediaType === 'video') {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        if (reader.result) {
+              {/* Desktop Media Type Selection */}
+              <div>
+                <label className="block font-medium text-[11px] text-neutral-700 mb-1">Desktop Media Format</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBannerFormData({ ...bannerFormData, mediaType: 'image' })}
+                    className={`p-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
+                      bannerFormData.mediaType !== 'video'
+                        ? 'bg-[#281044] text-white border-[#281044]'
+                        : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Desktop Image</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBannerFormData({ ...bannerFormData, mediaType: 'video' })}
+                    className={`p-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
+                      bannerFormData.mediaType === 'video'
+                        ? 'bg-purple-900 text-white border-purple-900'
+                        : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Desktop Video (MP4)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Desktop File Upload */}
+              <div>
+                <label className="cursor-pointer bg-[#281044] text-white px-3.5 py-2 rounded-lg font-bold text-xs inline-flex items-center justify-center gap-2 hover:bg-[#3b1763] transition-colors w-full">
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Desktop {bannerFormData.mediaType === 'video' ? 'Video' : 'Image'} File</span>
+                  <input
+                    type="file"
+                    accept={bannerFormData.mediaType === 'video' ? 'video/*' : 'image/*'}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (bannerFormData.mediaType === 'video') {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          if (reader.result) {
+                            setBannerFormData({
+                              ...bannerFormData,
+                              videoUrl: reader.result as string,
+                              mediaType: 'video',
+                              image: bannerFormData.image || '/rakomart-official-logo.jpg'
+                            });
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      } else {
+                        try {
+                          const compressed = await compressImageFile(file, 1920, 1080, 0.85);
                           setBannerFormData({
                             ...bannerFormData,
-                            videoUrl: reader.result as string,
-                            mediaType: 'video',
-                            image: bannerFormData.image || '/rakomart-official-logo.jpg'
+                            image: compressed,
+                            mediaType: 'image'
                           });
+                        } catch (err) {
+                          console.error('Compress desktop banner image error:', err);
+                          showToast('Error compressing desktop image.');
                         }
-                      };
-                      reader.readAsDataURL(file);
-                    } else {
-                      try {
-                        const compressed = await compressImageFile(file, 1200, 1200, 0.85);
-                        setBannerFormData({
-                          ...bannerFormData,
-                          image: compressed,
-                          mediaType: 'image'
-                        });
-                      } catch (err) {
-                        console.error('Compress banner image error:', err);
-                        showToast('Error compressing banner image.');
                       }
-                    }
-                  }}
-                  className="hidden"
-                />
-              </label>
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
 
-              {/* Direct URL Inputs */}
-              {bannerFormData.mediaType === 'video' ? (
-                <div>
-                  <label className="block font-medium text-[11px] text-neutral-600 mb-1">Or Direct Video URL</label>
+              {/* Desktop Direct URL Input */}
+              <div>
+                <label className="block font-medium text-[11px] text-neutral-600 mb-1">
+                  Or Direct Desktop {bannerFormData.mediaType === 'video' ? 'Video URL (.mp4)' : 'Image URL'}
+                </label>
+                {bannerFormData.mediaType === 'video' ? (
                   <input
                     type="text"
-                    placeholder="https://...mp4"
+                    placeholder="https://example.com/desktop-video.mp4"
                     value={bannerFormData.videoUrl || ''}
                     onChange={(e) => setBannerFormData({ ...bannerFormData, videoUrl: e.target.value, mediaType: 'video' })}
-                    className="w-full p-2 border rounded bg-white font-mono text-xs"
+                    className="w-full p-2 border rounded-lg bg-white font-mono text-xs focus:ring-1 focus:ring-[#281044] outline-hidden"
                   />
-                </div>
-              ) : (
-                <div>
-                  <label className="block font-medium text-[11px] text-neutral-600 mb-1">Or Direct Image URL</label>
+                ) : (
                   <input
                     type="text"
                     placeholder="https://images.unsplash.com/..."
                     value={bannerFormData.image || ''}
                     onChange={(e) => setBannerFormData({ ...bannerFormData, image: e.target.value, mediaType: 'image' })}
-                    className="w-full p-2 border rounded bg-white font-mono text-xs"
+                    className="w-full p-2 border rounded-lg bg-white font-mono text-xs focus:ring-1 focus:ring-[#281044] outline-hidden"
                   />
+                )}
+              </div>
+
+              {/* Desktop Media Preview Box */}
+              {(bannerFormData.image || bannerFormData.videoUrl) && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-neutral-700 text-[10px] uppercase tracking-wider">
+                      Desktop Container Live Preview (1920 × 900 Aspect)
+                    </label>
+                    <span className="text-[10px] text-emerald-700 font-bold">✓ Zero crop / Complete fit</span>
+                  </div>
+                  <div className="relative rounded-lg overflow-hidden bg-black flex items-center justify-center border border-purple-300 aspect-[1920/900] max-h-48 w-full mx-auto">
+                    {bannerFormData.mediaType === 'video' && bannerFormData.videoUrl ? (
+                      <video src={bannerFormData.videoUrl} controls autoPlay muted loop className="w-full h-full object-contain" />
+                    ) : (
+                      <img src={bannerFormData.image} alt="Desktop Preview" className="w-full h-full object-contain" />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Media Preview Box */}
-            {(bannerFormData.image || bannerFormData.videoUrl) && (
-              <div className="space-y-1">
-                <label className="block font-bold text-neutral-600 text-[11px]">Media Preview</label>
-                <div className="relative rounded-lg overflow-hidden bg-black max-h-36 flex items-center justify-center border">
-                  {bannerFormData.mediaType === 'video' && bannerFormData.videoUrl ? (
-                    <video src={bannerFormData.videoUrl} controls autoPlay muted loop className="max-h-36 w-full object-cover" />
-                  ) : (
-                    <img src={bannerFormData.image} alt="Preview" className="max-h-36 w-full object-cover" />
-                  )}
+            {/* ========================================================================= */}
+            {/* OPTION 2: MOBILE HERO MEDIA (Recommended: 1080 × 1350 px) */}
+            {/* ========================================================================= */}
+            <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-3">
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-purple-900" />
+                  <span className="font-bold text-xs text-purple-900">2. Mobile Hero Media</span>
+                </div>
+                <span className="text-[10px] text-neutral-600 bg-white px-2 py-0.5 rounded border border-neutral-200 font-medium">
+                  Recommended: 1080 × 1350 px (4:5 Portrait)
+                </span>
+              </div>
+
+              {/* Mobile Media Type Selection */}
+              <div>
+                <label className="block font-medium text-[11px] text-neutral-700 mb-1">Mobile Media Format</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBannerFormData({ ...bannerFormData, mobileMediaType: 'image' })}
+                    className={`p-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
+                      bannerFormData.mobileMediaType !== 'video'
+                        ? 'bg-purple-900 text-white border-purple-900'
+                        : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Mobile Image</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBannerFormData({ ...bannerFormData, mobileMediaType: 'video' })}
+                    className={`p-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
+                      bannerFormData.mobileMediaType === 'video'
+                        ? 'bg-purple-900 text-white border-purple-900'
+                        : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Mobile Video (MP4)</span>
+                  </button>
                 </div>
               </div>
-            )}
+
+              {/* Mobile File Upload */}
+              <div>
+                <label className="cursor-pointer bg-neutral-800 text-white px-3.5 py-2 rounded-lg font-bold text-xs inline-flex items-center justify-center gap-2 hover:bg-neutral-900 transition-colors w-full">
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Mobile {bannerFormData.mobileMediaType === 'video' ? 'Video' : 'Image'} File</span>
+                  <input
+                    type="file"
+                    accept={bannerFormData.mobileMediaType === 'video' ? 'video/*' : 'image/*'}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (bannerFormData.mobileMediaType === 'video') {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          if (reader.result) {
+                            setBannerFormData({
+                              ...bannerFormData,
+                              mobileVideoUrl: reader.result as string,
+                              mobileMediaType: 'video',
+                              mobileImage: bannerFormData.mobileImage || bannerFormData.image || '/rakomart-official-logo.jpg'
+                            });
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      } else {
+                        try {
+                          const compressed = await compressImageFile(file, 1080, 1350, 0.85);
+                          setBannerFormData({
+                            ...bannerFormData,
+                            mobileImage: compressed,
+                            mobileMediaType: 'image'
+                          });
+                        } catch (err) {
+                          console.error('Compress mobile banner image error:', err);
+                          showToast('Error compressing mobile image.');
+                        }
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Mobile Direct URL Input */}
+              <div>
+                <label className="block font-medium text-[11px] text-neutral-600 mb-1">
+                  Or Direct Mobile {bannerFormData.mobileMediaType === 'video' ? 'Video URL (.mp4)' : 'Image URL'}
+                </label>
+                {bannerFormData.mobileMediaType === 'video' ? (
+                  <input
+                    type="text"
+                    placeholder="https://example.com/mobile-video.mp4"
+                    value={bannerFormData.mobileVideoUrl || ''}
+                    onChange={(e) => setBannerFormData({ ...bannerFormData, mobileVideoUrl: e.target.value, mobileMediaType: 'video' })}
+                    className="w-full p-2 border rounded-lg bg-white font-mono text-xs focus:ring-1 focus:ring-[#281044] outline-hidden"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="https://images.unsplash.com/... (portrait)"
+                    value={bannerFormData.mobileImage || ''}
+                    onChange={(e) => setBannerFormData({ ...bannerFormData, mobileImage: e.target.value, mobileMediaType: 'image' })}
+                    className="w-full p-2 border rounded-lg bg-white font-mono text-xs focus:ring-1 focus:ring-[#281044] outline-hidden"
+                  />
+                )}
+              </div>
+
+              {/* Mobile Media Preview Box */}
+              {(bannerFormData.mobileImage || bannerFormData.mobileVideoUrl) ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-neutral-700 text-[10px] uppercase tracking-wider">
+                      Mobile Container Live Preview (1080 × 1350 Aspect)
+                    </label>
+                    <span className="text-[10px] text-emerald-700 font-bold">✓ Custom Mobile Media</span>
+                  </div>
+                  <div className="relative rounded-lg overflow-hidden bg-black flex items-center justify-center border border-neutral-300 aspect-[1080/1350] max-h-56 w-36 mx-auto">
+                    {bannerFormData.mobileMediaType === 'video' && bannerFormData.mobileVideoUrl ? (
+                      <video src={bannerFormData.mobileVideoUrl} controls autoPlay muted loop className="w-full h-full object-contain" />
+                    ) : (
+                      <img src={bannerFormData.mobileImage} alt="Mobile Preview" className="w-full h-full object-contain" />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-neutral-100/80 p-2.5 rounded-lg border border-dashed border-neutral-300 text-center text-neutral-500 text-[11px]">
+                  <span>Optional: If no mobile media is specified, the desktop media will automatically be scaled to fit mobile screens.</span>
+                </div>
+              )}
+            </div>
 
             {/* Button text & Link */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold mb-1">Button Text</label>
+                <label className="block font-bold mb-1 text-neutral-700">Button Text</label>
                 <input
                   type="text"
                   placeholder="Shop Now"
                   value={bannerFormData.buttonText || 'Shop Now'}
                   onChange={(e) => setBannerFormData({ ...bannerFormData, buttonText: e.target.value })}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded-lg focus:ring-1 focus:ring-[#281044] outline-hidden"
                 />
               </div>
               <div>
-                <label className="block font-bold mb-1">Button Target Link</label>
+                <label className="block font-bold mb-1 text-neutral-700">Button Target Link</label>
                 <input
                   type="text"
                   placeholder="#products"
                   value={bannerFormData.link || '#products'}
                   onChange={(e) => setBannerFormData({ ...bannerFormData, link: e.target.value })}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded-lg focus:ring-1 focus:ring-[#281044] outline-hidden"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t">
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 pt-3 border-t">
               <button
                 type="button"
                 disabled={isSaving}
                 onClick={() => setIsBannerModalOpen(false)}
-                className="px-4 py-2 border rounded font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+                className="px-4 py-2 border rounded-lg font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-5 py-2 bg-[#281044] text-white font-bold rounded hover:bg-[#3b1763] transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-5 py-2 bg-[#281044] text-white font-bold rounded-lg hover:bg-[#3b1763] transition-colors flex items-center gap-2 disabled:opacity-50 shadow-xs"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>{isSaving ? 'Saving to Cloud...' : 'Save Banner'}</span>
+                <span>{isSaving ? 'Saving to Cloud...' : 'Save Hero Banner'}</span>
               </button>
             </div>
           </form>

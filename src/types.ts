@@ -101,9 +101,14 @@ export interface HeroBanner {
   id: string;
   title?: string;
   subtitle?: string;
+  // Desktop Media (Recommended: 1920 × 900 px)
   image: string;
   videoUrl?: string;
   mediaType?: 'image' | 'video';
+  // Mobile Media (Recommended: 1080 × 1350 px)
+  mobileImage?: string;
+  mobileVideoUrl?: string;
+  mobileMediaType?: 'image' | 'video';
   position?: 'hero1' | 'hero2';
   link?: string;
   buttonText?: string;
