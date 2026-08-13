@@ -124,12 +124,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [cartExpiresAt, setCartExpiresAt] = useState<number | null>(null);
   const [cartExpiredNotice, setCartExpiredNotice] = useState<string | null>(null);
 
-  // Persistent Global Website States with instant initial render defaults
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  // Persistent Global Website States
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [archivedOrders, setArchivedOrders] = useState<Order[]>([]);
-  const [banners, setBanners] = useState<HeroBanner[]>(INITIAL_HERO_BANNERS);
+  const [banners, setBanners] = useState<HeroBanner[]>([]);
   const [settings, setSettings] = useState<AdminSettings>(DEFAULT_ADMIN_SETTINGS);
 
   // 1. Initial Load of Session Cart from Local Storage

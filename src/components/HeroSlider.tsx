@@ -180,38 +180,22 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
 
   return (
     <div className={`relative w-full max-w-7xl mx-auto px-4 sm:px-6 ${position === 'hero2' ? 'my-2' : 'my-4 sm:my-6'}`}>
-      <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-lg bg-[#281044] border border-purple-800/30 group select-none">
+      <div className="relative h-[280px] sm:h-[400px] lg:h-[500px] w-full rounded-2xl overflow-hidden shadow-lg bg-[#281044] border border-purple-900/40 group select-none">
         {/* Background Media (Image or Clean Presentation Video) */}
         {isVideo && !videoError ? (
-          <div className="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden bg-[#281044]">
-            {/* Ambient background blur for seamless widescreen presentation */}
-            <video
-              src={mediaSrc}
-              autoPlay
-              loop
-              muted
-              playsInline
-              aria-hidden="true"
-              tabIndex={-1}
-              style={{ backgroundColor: 'transparent' }}
-              className="absolute inset-0 w-full h-full object-cover filter blur-2xl opacity-90 scale-110 pointer-events-none select-none block m-0 p-0 border-0 outline-none"
-            />
-            {/* Primary Hero Video - 100% Uncropped Composition without top/bottom black lines */}
-            <video
-              key={mediaSrc}
-              src={mediaSrc}
-              autoPlay
-              loop
-              muted
-              playsInline
-              disablePictureInPicture
-              controlsList="nodownload nofullscreen noremoteplayback"
-              onContextMenu={(e) => e.preventDefault()}
-              onError={() => setVideoError(true)}
-              style={{ backgroundColor: 'transparent' }}
-              className="relative z-10 w-full h-full object-contain object-center block m-0 p-0 border-0 outline-none pointer-events-none select-none transform scale-[1.008]"
-            />
-          </div>
+          <video
+            key={mediaSrc}
+            src={mediaSrc}
+            autoPlay
+            loop
+            muted
+            playsInline
+            disablePictureInPicture
+            controlsList="nodownload nofullscreen noremoteplayback"
+            onContextMenu={(e) => e.preventDefault()}
+            onError={() => setVideoError(true)}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+          />
         ) : (
           <img
             src={currentBanner.image || mediaSrc}
