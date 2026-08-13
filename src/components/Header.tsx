@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingBag, Search, Facebook, Phone, Truck, Menu, X, ShieldCheck, HeartHandshake } from 'lucide-react';
+import { ShoppingBag, Search, Facebook, Menu, X } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { RakoMartLogo } from './RakoMartLogo';
 
@@ -10,7 +10,6 @@ export const Header: React.FC = () => {
     navigateTo,
     searchQuery,
     setSearchQuery,
-    settings,
     currentView,
   } = useStore();
 
@@ -23,14 +22,14 @@ export const Header: React.FC = () => {
     }
   };
 
+  const facebookUrl = "https://www.facebook.com/share/1BhVJTWSjz/?mibextid=wwXIfr";
+
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-neutral-200 shadow-xs">
-
-
       {/* Main Header Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-4">
-        {/* LEFT: Logo & Mobile Toggle */}
-        <div className="flex items-center gap-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 sm:gap-4">
+        {/* LEFT: Logo & Mobile Menu Toggle */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="md:hidden p-2 text-neutral-700 hover:text-[#281044] hover:bg-neutral-100 rounded-lg transition-colors"
@@ -43,7 +42,7 @@ export const Header: React.FC = () => {
         </div>
 
         {/* CENTER: Desktop Search Bar */}
-        <div className="hidden md:flex flex-1 max-w-md mx-4">
+        <div className="hidden md:flex flex-1 max-w-md mx-2 lg:mx-4">
           <form onSubmit={handleSearchSubmit} className="relative w-full">
             <input
               type="text"
@@ -62,12 +61,11 @@ export const Header: React.FC = () => {
           </form>
         </div>
 
-        {/* RIGHT: Actions (Cart) */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Cart Drawer Trigger */}
+        {/* RIGHT: Cart Drawer Trigger Button */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <button
             onClick={() => setIsCartDrawerOpen(true)}
-            className="relative p-2.5 bg-[#281044] text-white rounded-full hover:bg-[#3b1763] transition-transform active:scale-95 shadow-xs flex items-center justify-center"
+            className="relative p-2.5 bg-[#281044] text-white rounded-full hover:bg-[#3b1763] transition-transform active:scale-95 shadow-xs flex items-center justify-center shrink-0"
             title="Shopping Cart"
             aria-label="Open Shopping Cart"
           >
@@ -194,7 +192,7 @@ export const Header: React.FC = () => {
 
           <div className="pt-2 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-600">
             <a
-              href="https://www.facebook.com/share/1BhVJTWSjz/?mibextid=wwXIfr"
+              href={facebookUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-blue-600 font-medium py-1"
