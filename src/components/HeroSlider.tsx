@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { RakoMartLogoIcon } from './RakoMartLogo';
@@ -12,6 +12,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [videoError, setVideoError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hero2VideoRef = useRef<HTMLVideoElement | null>(null);
 
   const activeBanners = (banners || [])
     .filter((b) => b.isActive && (b.position || 'hero1') === position)
@@ -29,6 +31,108 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
     }, 6000);
     return () => clearInterval(interval);
   }, [activeBanners.length, isPlaying]);
+
+  const currentBanner = activeBanners[currentIndex] || activeBanners[0];
+  const isVideo = currentBanner && (currentBanner.mediaType === 'video' || (currentBanner.videoUrl && currentBanner.videoUrl.trim().length > 0));
+  const mediaSrc = currentBanner ? (isVideo ? (currentBanner.videoUrl || currentBanner.image) : currentBanner.image) : '';
+
+  // Ensure continuous looping and un-pausing on mobile browsers
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isVideo) return;
+
+    video.defaultMuted = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+
+    const tryPlay = () => {
+      if (video) {
+        video.muted = true;
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            const onUserAction = () => {
+              if (video) {
+                video.muted = true;
+                video.play().catch(() => {});
+              }
+              window.removeEventListener('touchstart', onUserAction);
+              window.removeEventListener('touchend', onUserAction);
+              window.removeEventListener('click', onUserAction);
+              window.removeEventListener('scroll', onUserAction);
+            };
+            window.addEventListener('touchstart', onUserAction, { passive: true, once: true });
+            window.addEventListener('touchend', onUserAction, { passive: true, once: true });
+            window.addEventListener('click', onUserAction, { passive: true, once: true });
+            window.addEventListener('scroll', onUserAction, { passive: true, once: true });
+          });
+        }
+      }
+    };
+
+    tryPlay();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        tryPlay();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [mediaSrc, currentIndex, isVideo]);
+
+  // Ensure hero2 brand statement video continuous playback on mobile
+  useEffect(() => {
+    const video = hero2VideoRef.current;
+    if (!video || !settings?.brandStatementVideoUrl) return;
+
+    video.defaultMuted = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+
+    const tryPlay = () => {
+      if (video) {
+        video.muted = true;
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            const onUserAction = () => {
+              if (video) {
+                video.muted = true;
+                video.play().catch(() => {});
+              }
+              window.removeEventListener('touchstart', onUserAction);
+              window.removeEventListener('click', onUserAction);
+              window.removeEventListener('scroll', onUserAction);
+            };
+            window.addEventListener('touchstart', onUserAction, { passive: true, once: true });
+            window.addEventListener('click', onUserAction, { passive: true, once: true });
+            window.addEventListener('scroll', onUserAction, { passive: true, once: true });
+          });
+        }
+      }
+    };
+
+    tryPlay();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        tryPlay();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [settings?.brandStatementVideoUrl]);
 
   if (activeBanners.length === 0) {
     if (position === 'hero2') {
@@ -86,14 +190,27 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
                 {settings?.brandStatementVideoUrl && (
                   <div className="relative rounded-2xl overflow-hidden bg-[#281044] shadow-md border border-purple-900/40">
                     <video
+                      ref={hero2VideoRef}
                       src={settings.brandStatementVideoUrl}
                       autoPlay
                       loop
                       muted
                       playsInline
+                      preload="auto"
                       disablePictureInPicture
                       controlsList="nodownload nofullscreen noremoteplayback"
                       onContextMenu={(e) => e.preventDefault()}
+                      onEnded={(e) => {
+                        e.currentTarget.currentTime = 0;
+                        e.currentTarget.play().catch(() => {});
+                      }}
+                      onPause={(e) => {
+                        e.currentTarget.play().catch(() => {});
+                      }}
+                      onLoadedData={(e) => {
+                        e.currentTarget.muted = true;
+                        e.currentTarget.play().catch(() => {});
+                      }}
                       className="w-full max-h-[500px] object-cover pointer-events-none select-none"
                     />
                     {(settings.brandStatementText || settings.brandStatementSubtext) && (
@@ -174,26 +291,39 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
     );
   }
 
-  const currentBanner = activeBanners[currentIndex] || activeBanners[0];
-  const isVideo = currentBanner.mediaType === 'video' || (currentBanner.videoUrl && currentBanner.videoUrl.trim().length > 0);
-  const mediaSrc = isVideo ? (currentBanner.videoUrl || currentBanner.image) : currentBanner.image;
-
   return (
     <div className={`relative w-full max-w-7xl mx-auto px-4 sm:px-6 ${position === 'hero2' ? 'my-2' : 'my-4 sm:my-6'}`}>
       <div className="relative h-[280px] sm:h-[400px] lg:h-[500px] w-full rounded-2xl overflow-hidden shadow-lg bg-[#281044] border border-purple-900/40 group select-none">
         {/* Background Media (Image or Clean Presentation Video) */}
         {isVideo && !videoError ? (
           <video
+            ref={videoRef}
             key={mediaSrc}
             src={mediaSrc}
             autoPlay
             loop
             muted
             playsInline
+            preload="auto"
             disablePictureInPicture
             controlsList="nodownload nofullscreen noremoteplayback"
             onContextMenu={(e) => e.preventDefault()}
             onError={() => setVideoError(true)}
+            onEnded={(e) => {
+              e.currentTarget.currentTime = 0;
+              e.currentTarget.play().catch(() => {});
+            }}
+            onPause={(e) => {
+              e.currentTarget.play().catch(() => {});
+            }}
+            onLoadedData={(e) => {
+              e.currentTarget.muted = true;
+              e.currentTarget.play().catch(() => {});
+            }}
+            onCanPlay={(e) => {
+              e.currentTarget.muted = true;
+              e.currentTarget.play().catch(() => {});
+            }}
             className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
           />
         ) : (
