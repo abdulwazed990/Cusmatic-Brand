@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Trash2, ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Trash2, ShoppingBag, ArrowRight, ShieldCheck, Clock, AlertCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
 export const CartDrawer: React.FC = () => {
@@ -11,7 +11,35 @@ export const CartDrawer: React.FC = () => {
     isCartDrawerOpen,
     setIsCartDrawerOpen,
     navigateTo,
+    cartExpiresAt,
+    cartExpiredNotice,
+    dismissCartExpiredNotice,
   } = useStore();
+
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  useEffect(() => {
+    if (!cartExpiresAt || cart.length === 0) {
+      setTimeLeft('');
+      return;
+    }
+
+    const updateTimer = () => {
+      const diffMs = cartExpiresAt - Date.now();
+      if (diffMs <= 0) {
+        setTimeLeft('Expired');
+        return;
+      }
+      const totalSec = Math.floor(diffMs / 1000);
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      setTimeLeft(`${mins}m ${secs < 10 ? '0' : ''}${secs}s`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [cartExpiresAt, cart.length]);
 
   if (!isCartDrawerOpen) return null;
 
@@ -40,6 +68,36 @@ export const CartDrawer: React.FC = () => {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Expired Notice Alert Banner */}
+        {cartExpiredNotice && (
+          <div className="bg-amber-50 border-b border-amber-200 p-3 flex items-start gap-2.5 text-xs text-amber-900">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <span className="font-bold block mb-0.5">Cart Reset</span>
+              <span>{cartExpiredNotice}</span>
+            </div>
+            <button
+              onClick={dismissCartExpiredNotice}
+              className="text-amber-600 hover:text-amber-800 p-1 font-bold"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Active Timer Indicator */}
+        {cart.length > 0 && timeLeft && timeLeft !== 'Expired' && (
+          <div className="bg-purple-50 px-4 py-2 border-b border-purple-100 flex items-center justify-between text-xs text-[#281044]">
+            <div className="flex items-center gap-1.5 font-medium">
+              <Clock className="w-3.5 h-3.5 text-purple-700 animate-pulse" />
+              <span>Cart active duration:</span>
+            </div>
+            <span className="font-extrabold bg-purple-200/70 text-[#281044] px-2 py-0.5 rounded-md font-mono text-[11px]">
+              Expires in {timeLeft}
+            </span>
+          </div>
+        )}
 
         {/* Cart Item List Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Truck, Phone, ArrowRight, Printer, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Truck, ArrowRight, Printer, MessageCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { RakoMartLogo } from './RakoMartLogo';
 
@@ -19,6 +19,18 @@ export const OrderConfirmationView: React.FC = () => {
       </div>
     );
   }
+
+  // Format WhatsApp Link using configured Admin/Customer Care WhatsApp number
+  let rawPhone = settings.customerCarePhone || '8801894567890';
+  let cleanPhone = rawPhone.replace(/\D/g, '');
+  if (cleanPhone.startsWith('0')) {
+    cleanPhone = '88' + cleanPhone;
+  } else if (!cleanPhone.startsWith('88') && cleanPhone.length === 10) {
+    cleanPhone = '880' + cleanPhone;
+  }
+
+  const whatsappMessage = `Hello RakoMart, I have placed an order.\n\nOrder ID: ${lastCreatedOrder.id}\nName: ${lastCreatedOrder.customerName}\nMobile: ${lastCreatedOrder.customerMobile}\nTotal Amount: ৳${lastCreatedOrder.total.toLocaleString()}\n\nPlease confirm my order.`;
+  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
   const handlePrint = () => {
     window.print();
@@ -158,22 +170,34 @@ export const OrderConfirmationView: React.FC = () => {
 
         {/* Action Controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-neutral-200 print:hidden">
-          <button
-            onClick={handlePrint}
-            className="w-full sm:w-auto px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-sm"
           >
-            <Printer className="w-4 h-4" />
-            <span>Print / Download Invoice</span>
-          </button>
+            <MessageCircle className="w-4 h-4 fill-white text-emerald-600 shrink-0" />
+            <span>CHAT ON WHATSAPP</span>
+          </a>
 
-          <button
-            onClick={() => navigateTo('order_tracking')}
-            className="w-full sm:w-auto px-5 py-2.5 bg-[#281044] hover:bg-[#3b1763] text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-transform active:scale-95"
-          >
-            <Truck className="w-4 h-4 text-purple-300" />
-            <span>Track Your Order</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={handlePrint}
+              className="w-full sm:w-auto px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-neutral-300"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Print / Download Invoice</span>
+            </button>
+
+            <button
+              onClick={() => navigateTo('order_tracking')}
+              className="w-full sm:w-auto px-5 py-2.5 bg-[#281044] hover:bg-[#3b1763] text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-transform active:scale-95"
+            >
+              <Truck className="w-4 h-4 text-purple-300" />
+              <span>Track Order</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

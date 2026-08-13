@@ -15,9 +15,9 @@ export const CustomerSupportView: React.FC = () => {
         <div className="w-12 h-12 bg-purple-100 text-[#281044] rounded-full flex items-center justify-center mx-auto mb-2">
           <HeartHandshake className="w-6 h-6" />
         </div>
-        <h1 className="text-2xl font-extrabold text-[#281044]">কাস্টমার কেয়ার & হেল্পলাইন</h1>
+        <h1 className="text-2xl font-extrabold text-[#281044]">Customer Care & Support</h1>
         <p className="text-xs text-neutral-600">
-          RakoMart এ আমরা আপনাকে সেরা কসমেটিকস কেনাকাটার অভিজ্ঞতা দিতে প্রতিশ্রুতিবদ্ধ। যেকোনো সহায়তায় আমাদের সাথে যোগাযোগ করুন।
+          At RakoMart, we are committed to providing you with the best cosmetics shopping experience. Contact us for any assistance.
         </p>
       </div>
 
@@ -30,22 +30,22 @@ export const CustomerSupportView: React.FC = () => {
               <Phone className="w-5 h-5 fill-current" />
             </div>
             <div>
-              <h3 className="font-extrabold text-base text-emerald-950">হোয়াটসঅ্যাপ হেল্পলাইন</h3>
-              <p className="text-xs text-emerald-700">সরাসরি কথা বলুন কাস্টমার সাপোর্ট টিমের সাথে</p>
+              <h3 className="font-extrabold text-base text-emerald-950">WhatsApp Helpline</h3>
+              <p className="text-xs text-emerald-700">Direct contact with our customer support team</p>
             </div>
           </div>
 
           <p className="text-xs text-emerald-900 leading-relaxed">
-            অর্ডার সংক্রান্ত সমস্যা, প্রোডাক্ট ব্যবহারের নিয়ম বা পেমেন্ট ভেরিফিকেশনে সহায়তার জন্য নিচে ক্লিক করে সরাসরি মেসেজ পাঠান।
+            For order inquiries, product usage guidelines, or payment verification assistance, click below to message us directly on WhatsApp.
           </p>
 
           <a
-            href={whatsappUrl}
+            href="https://wa.me/8801756425948"
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.99]"
           >
-            <span>হোয়াটসঅ্যাপে চ্যাট করুন ({settings.customerCarePhone})</span>
+            <span>Chat on WhatsApp (01756425948)</span>
             <ArrowRight className="w-4 h-4" />
           </a>
         </div>
@@ -57,13 +57,13 @@ export const CustomerSupportView: React.FC = () => {
               <Facebook className="w-5 h-5 fill-current" />
             </div>
             <div>
-              <h3 className="font-extrabold text-base text-blue-950">অফিসিয়াল ফেইসবুক পেজ</h3>
+              <h3 className="font-extrabold text-base text-blue-950">Official Facebook Page</h3>
               <p className="text-xs text-blue-700">RakoMart Official Facebook Page</p>
             </div>
           </div>
 
           <p className="text-xs text-blue-900 leading-relaxed">
-            নতুন প্রোডাক্টের আপডেট, অফার এবং কাস্টমার রিভিউ দেখতে আমাদের অফিশিয়াল ফেইসবুক পেজে যুক্ত থাকুন।
+            Join our official Facebook community for new arrivals, exclusive offers, and verified customer reviews.
           </p>
 
           <a
@@ -72,8 +72,7 @@ export const CustomerSupportView: React.FC = () => {
             rel="noopener noreferrer"
             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.99]"
           >
-            <span>ফেইসবুক পেজ ভিজিট করুন</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>Visit Facebook Page →</span>
           </a>
         </div>
       </div>
@@ -82,28 +81,28 @@ export const CustomerSupportView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-xs space-y-4">
         <h3 className="text-base font-extrabold text-[#281044] border-b pb-2 flex items-center gap-2">
           <HelpCircle className="w-5 h-5 text-purple-700" />
-          <span>সাধারণ জিজ্ঞাসাসমূহ (FAQ)</span>
+          <span>Frequently Asked Questions (FAQ)</span>
         </h3>
 
         <div className="space-y-3 text-xs">
           <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200/80">
-            <h4 className="font-bold text-neutral-900 mb-1">প্রোডাক্টগুলো কি ১০০% অরিজিনাল?</h4>
+            <h4 className="font-bold text-neutral-900 mb-1">Are your products 100% authentic?</h4>
             <p className="text-neutral-600">
-              হ্যাঁ, RakoMart এ প্রদর্শিত প্রতিটি কসমেটিকস ও স্কিনকেয়ার প্রোডাক্ট ১০০% আসল ও প্রামাণিক। আমরা সরাসরি অনুমোদিত ডিস্ট্রিবিউটরদের থেকে পণ্য সংগ্রহ করি।
+              Yes, every product at RakoMart is 100% genuine and authentic. To ensure top-tier quality, we source products directly from authorized distributors and verified suppliers.
             </p>
           </div>
 
           <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200/80">
-            <h4 className="font-bold text-neutral-900 mb-1">ডেলিভারি চার্জ কত এবং কতদিন সময় লাগে?</h4>
+            <h4 className="font-bold text-neutral-900 mb-1">What is the delivery charge and how long does it take?</h4>
             <p className="text-neutral-600">
-              ঢাকার ভেতরে ডেলিভারি ফি ৳{settings.deliveryInsideDhaka} (২৪-৪৮ ঘণ্টা) এবং ঢাকার বাইরে ৳{settings.deliveryOutsideDhaka} (২-৩ কার্যদিবস)।
+              Delivery fee inside Dhaka is ৳{settings.deliveryInsideDhaka} (24-48 hours) and outside Dhaka is ৳{settings.deliveryOutsideDhaka} (2-3 business days).
             </p>
           </div>
 
           <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200/80">
-            <h4 className="font-bold text-neutral-900 mb-1">পেমেন্ট মেথড কীভাবে কাজ করে?</h4>
+            <h4 className="font-bold text-neutral-900 mb-1">How do payment methods work?</h4>
             <p className="text-neutral-600">
-              আপনি বিকাশ (bKash), নগদ (Nagad) এর মাধ্যমে অগ্রিম পেমেন্ট অথবা ক্যাশ অন ডেলিভারি (Cash on Delivery) নির্বাচন করতে পারেন।
+              You can select advance payment via bKash or Nagad, or opt for Cash on Delivery (COD).
             </p>
           </div>
         </div>

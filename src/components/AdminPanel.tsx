@@ -2,24 +2,27 @@ import React, { useState, useEffect } from 'react';
 import {
   Lock, LayoutDashboard, ShoppingCart, Package, Image as ImageIcon,
   Settings, Archive, BarChart3, CheckCircle2, XCircle, Trash2, Edit,
-  Plus, Search, ArrowLeft, RefreshCw, Eye, FolderTree, ArrowUp, ArrowDown, Upload, Tag, Video
+  Plus, Search, ArrowLeft, RefreshCw, Eye, FolderTree, ArrowUp, ArrowDown, Upload, Tag, Video, Loader2, Sparkles, AlertCircle
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus, Product, HeroBanner, Category } from '../types';
 import { RakoMartLogoIcon } from './RakoMartLogo';
+import { compressImageFile, processFaviconFile } from '../lib/imageUtils';
+import { DEFAULT_FAVICON_URL } from '../lib/faviconUtils';
 
 export const AdminPanel: React.FC = () => {
   const {
     orders, archivedOrders, products, banners, settings, categories,
     updateOrderStatus, verifyPayment, archiveOrder, addProduct, updateProduct, deleteProduct,
     addBanner, updateBanner, deleteBanner, updateSettings, navigateTo, showToast,
-    addCategory, updateCategory, deleteCategory, reorderCategories
+    addCategory, updateCategory, deleteCategory, reorderCategories, isCloudConnected
   } = useStore();
 
-  // Admin Auth Gate (simple pin for security/demo)
+  // Admin Auth Gate
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [adminPin, setAdminPin] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'payments' | 'categories' | 'products' | 'banners' | 'archived' | 'settings'>('dashboard');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Search & Filter state
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
@@ -67,10 +70,73 @@ export const AdminPanel: React.FC = () => {
 
   // Settings Form State
   const [settingsForm, setSettingsForm] = useState(settings);
+  const [pendingFaviconUrl, setPendingFaviconUrl] = useState<string>(settings.faviconUrl || DEFAULT_FAVICON_URL);
+  const [isFaviconModified, setIsFaviconModified] = useState<boolean>(false);
+  const [isSavingFavicon, setIsSavingFavicon] = useState<boolean>(false);
 
   useEffect(() => {
     setSettingsForm(settings);
+    if (!isFaviconModified) {
+      setPendingFaviconUrl(settings.faviconUrl || DEFAULT_FAVICON_URL);
+    }
   }, [settings]);
+
+  // Favicon Management Handlers
+  const handleFaviconFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Favicon file size must be less than 10MB');
+      return;
+    }
+    try {
+      const dataUrl = await processFaviconFile(file);
+      setPendingFaviconUrl(dataUrl);
+      setIsFaviconModified(true);
+      showToast('Favicon loaded for preview. Click "Save Changes" to apply globally.');
+    } catch (err) {
+      console.error('Favicon upload error:', err);
+      showToast('Error reading favicon file.');
+    }
+  };
+
+  const handleRemoveFavicon = () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to remove the custom favicon and restore the default RakoMart favicon?'
+    );
+    if (confirmed) {
+      setPendingFaviconUrl(DEFAULT_FAVICON_URL);
+      setIsFaviconModified(true);
+      showToast('Custom favicon removed. Click "Save Changes" to update the cloud website.');
+    }
+  };
+
+  const handleSaveFaviconChanges = async () => {
+    setIsSavingFavicon(true);
+    try {
+      const newFavicon = pendingFaviconUrl.trim() || DEFAULT_FAVICON_URL;
+      const timestamp = Date.now();
+      await updateSettings(
+        {
+          ...settingsForm,
+          faviconUrl: newFavicon,
+          faviconUpdatedAt: timestamp,
+        },
+        'Favicon updated successfully.'
+      );
+      setSettingsForm((prev) => ({
+        ...prev,
+        faviconUrl: newFavicon,
+        faviconUpdatedAt: timestamp,
+      }));
+      setIsFaviconModified(false);
+    } catch (err) {
+      console.error(err);
+      showToast('Favicon could not be updated. Please try again.');
+    } finally {
+      setIsSavingFavicon(false);
+    }
+  };
 
   // Authentication Handle
   const handleLogin = (e: React.FormEvent) => {
@@ -81,34 +147,6 @@ export const AdminPanel: React.FC = () => {
       showToast('Invalid Admin PIN! (Try 1234 or admin)');
     }
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-16">
-        <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-md space-y-4 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-[#281044] text-white flex items-center justify-center mx-auto shadow-sm">
-            <RakoMartLogoIcon className="w-8 h-8 text-white" color="#ffffff" />
-          </div>
-          <h2 className="text-lg font-bold text-[#281044]">RakoMart Admin Panel</h2>
-          <form onSubmit={handleLogin} className="space-y-3">
-            <input
-              type="password"
-              placeholder="Enter Admin PIN"
-              value={adminPin}
-              onChange={(e) => setAdminPin(e.target.value)}
-              className="w-full px-3.5 py-2.5 border rounded-xl text-center font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#281044]"
-            />
-            <button
-              type="submit"
-              className="w-full bg-[#281044] text-white font-bold py-2.5 rounded-xl text-xs"
-            >
-              Login
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   // Dashboard Stats Calculations
   const totalOrdersCount = orders.length;
@@ -144,6 +182,34 @@ export const AdminPanel: React.FC = () => {
     return o.id.toLowerCase().includes(q) || o.customerMobile.includes(q) || o.customerName.toLowerCase().includes(q);
   });
 
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16">
+        <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-md space-y-4 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-[#281044] text-white flex items-center justify-center mx-auto shadow-sm">
+            <RakoMartLogoIcon className="w-8 h-8 text-white" color="#ffffff" />
+          </div>
+          <h2 className="text-lg font-bold text-[#281044]">RakoMart Admin Panel</h2>
+          <form onSubmit={handleLogin} className="space-y-3">
+            <input
+              type="password"
+              placeholder="Enter Admin PIN"
+              value={adminPin}
+              onChange={(e) => setAdminPin(e.target.value)}
+              className="w-full px-3.5 py-2.5 border rounded-xl text-center font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#281044]"
+            />
+            <button
+              type="submit"
+              className="w-full bg-[#281044] text-white font-bold py-2.5 rounded-xl text-xs"
+            >
+              Login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   // Category Handlers
   const handleOpenAddCategory = () => {
     setEditingCategory(null);
@@ -171,7 +237,7 @@ export const AdminPanel: React.FC = () => {
     setIsCategoryModalOpen(true);
   };
 
-  const handleSaveCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryFormData.name.trim()) {
       showToast('Category name is required.');
@@ -182,46 +248,64 @@ export const AdminPanel: React.FC = () => {
       ? categoryFormData.slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
       : categoryFormData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
 
-    if (editingCategory) {
-      updateCategory({
-        ...editingCategory,
-        name: categoryFormData.name,
-        nameBn: categoryFormData.nameBn,
-        slug: slug,
-        image: categoryFormData.image,
-        isActive: categoryFormData.isActive,
-        order: Number(categoryFormData.order),
-      });
-    } else {
-      addCategory({
-        name: categoryFormData.name,
-        nameBn: categoryFormData.nameBn,
-        slug: slug,
-        image: categoryFormData.image,
-        isActive: categoryFormData.isActive,
-        order: Number(categoryFormData.order),
-      });
+    setIsSaving(true);
+    try {
+      if (editingCategory) {
+        await updateCategory({
+          ...editingCategory,
+          name: categoryFormData.name,
+          nameBn: categoryFormData.nameBn,
+          slug: slug,
+          image: categoryFormData.image,
+          isActive: categoryFormData.isActive,
+          order: Number(categoryFormData.order),
+        });
+      } else {
+        await addCategory({
+          name: categoryFormData.name,
+          nameBn: categoryFormData.nameBn,
+          slug: slug,
+          image: categoryFormData.image,
+          isActive: categoryFormData.isActive,
+          order: Number(categoryFormData.order),
+        });
+      }
+      setIsCategoryModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to save category to cloud database.');
+    } finally {
+      setIsSaving(false);
     }
-    setIsCategoryModalOpen(false);
   };
 
-  const handleCategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCategoryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Image file size must be less than 5MB');
-      return;
+    try {
+      const compressed = await compressImageFile(file, 800, 800, 0.8);
+      setCategoryFormData((prev) => ({ ...prev, image: compressed }));
+    } catch (err) {
+      console.error('Image compress error:', err);
+      showToast('Error processing category image.');
     }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setCategoryFormData((prev) => ({ ...prev, image: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
   };
 
-  const handleMoveCategory = (index: number, direction: 'up' | 'down') => {
+  const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const compressed = await compressImageFile(file, 1000, 1000, 0.85);
+      setProductFormData((prev) => ({ ...prev, image: compressed }));
+    } catch (err) {
+      console.error('Image compress error:', err);
+      showToast('Error processing product image.');
+    }
+  };
+
+  const handleMoveCategory = async (index: number, direction: 'up' | 'down') => {
     const sorted = [...categories].sort((a, b) => (a.order || 0) - (b.order || 0));
     const targetIdx = direction === 'up' ? index - 1 : index + 1;
     if (targetIdx < 0 || targetIdx >= sorted.length) return;
@@ -230,37 +314,61 @@ export const AdminPanel: React.FC = () => {
     sorted[index] = sorted[targetIdx];
     sorted[targetIdx] = temp;
 
-    reorderCategories(sorted);
+    await reorderCategories(sorted);
   };
 
   // Product Save Handle
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingProduct) {
-      updateProduct({ ...productFormData, id: editingProduct.id });
-    } else {
-      addProduct(productFormData);
+    setIsSaving(true);
+    try {
+      if (editingProduct) {
+        await updateProduct({ ...productFormData, id: editingProduct.id });
+      } else {
+        await addProduct(productFormData);
+      }
+      setIsProductModalOpen(false);
+      setEditingProduct(null);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to save product to cloud database.');
+    } finally {
+      setIsSaving(false);
     }
-    setIsProductModalOpen(false);
-    setEditingProduct(null);
   };
 
   // Banner Save Handle
-  const handleSaveBanner = (e: React.FormEvent) => {
+  const handleSaveBanner = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingBanner) {
-      updateBanner({ ...bannerFormData, id: editingBanner.id });
-    } else {
-      addBanner(bannerFormData);
+    setIsSaving(true);
+    try {
+      if (editingBanner) {
+        await updateBanner({ ...bannerFormData, id: editingBanner.id });
+      } else {
+        await addBanner(bannerFormData);
+      }
+      setIsBannerModalOpen(false);
+      setEditingBanner(null);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to save banner to cloud database.');
+    } finally {
+      setIsSaving(false);
     }
-    setIsBannerModalOpen(false);
-    setEditingBanner(null);
   };
 
   // Save Settings Handle
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateSettings(settingsForm);
+    setIsSaving(true);
+    try {
+      await updateSettings(settingsForm);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to save settings to cloud database.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -270,9 +378,24 @@ export const AdminPanel: React.FC = () => {
         <div className="flex items-center gap-3">
           <RakoMartLogoIcon className="w-9 h-9 text-purple-300 shrink-0" color="#e9d5ff" />
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="bg-purple-800 text-purple-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
                 Administrator
+              </span>
+              <span
+                className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 transition-colors ${
+                  isCloudConnected
+                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/50'
+                    : 'bg-amber-950/80 text-amber-300 border border-amber-500/50'
+                }`}
+                title={isCloudConnected ? 'Cloud Live Database Connected' : 'Connecting to Cloud Database...'}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isCloudConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                  }`}
+                />
+                <span>{isCloudConnected ? 'Cloud Live' : 'Cloud Connecting...'}</span>
               </span>
               <h1 className="text-xl font-extrabold">RakoMart Admin Dashboard</h1>
             </div>
@@ -928,6 +1051,159 @@ export const AdminPanel: React.FC = () => {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            {/* Website Favicon Management Section */}
+            <div className="sm:col-span-2 space-y-4 p-5 bg-gradient-to-r from-purple-50/90 to-indigo-50/70 rounded-2xl border border-purple-200/80 shadow-xs">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-purple-200/60 pb-3">
+                <div>
+                  <h4 className="font-extrabold text-base text-[#281044] flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-700" />
+                    <span>Favicon Management</span>
+                  </h4>
+                  <p className="text-xs text-neutral-600 mt-0.5">
+                    Manage the website favicon displayed in browser tabs, bookmarks, and mobile app icons without touching code.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isFaviconModified ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-[11px] font-bold animate-pulse">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Pending Changes (Unsaved)</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[11px] font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Active in Cloud Database</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start bg-white p-4 rounded-xl border border-purple-100">
+                {/* Preview Box */}
+                <div className="lg:col-span-5 space-y-2.5">
+                  <label className="block font-bold text-xs text-[#281044]">Current Favicon Preview</label>
+                  
+                  <div className="p-4 bg-neutral-100/80 rounded-xl border border-neutral-200 flex flex-col items-center justify-center gap-3">
+                    {/* Main large preview */}
+                    <div className="w-20 h-20 rounded-2xl bg-white border border-purple-200 shadow-md p-2 flex items-center justify-center overflow-hidden relative group">
+                      <img
+                        src={pendingFaviconUrl || DEFAULT_FAVICON_URL}
+                        alt="Favicon Large Preview"
+                        className="w-full h-full object-contain rounded-lg"
+                      />
+                    </div>
+
+                    {/* Multi-resolution size simulation previews */}
+                    <div className="space-y-1 w-full border-t border-neutral-200 pt-3">
+                      <span className="block text-[10px] font-bold text-neutral-500 text-center uppercase tracking-wider">
+                        Device Preview Simulation
+                      </span>
+                      <div className="flex items-center justify-center gap-4 pt-1">
+                        {/* 16x16 */}
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-4 h-4 bg-white border rounded overflow-hidden flex items-center justify-center">
+                            <img src={pendingFaviconUrl || DEFAULT_FAVICON_URL} alt="16x16" className="w-full h-full object-contain" />
+                          </div>
+                          <span className="text-[9px] text-neutral-500 font-mono">16×16 Tab</span>
+                        </div>
+
+                        {/* 32x32 */}
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-8 h-8 bg-white border rounded-md overflow-hidden flex items-center justify-center">
+                            <img src={pendingFaviconUrl || DEFAULT_FAVICON_URL} alt="32x32" className="w-full h-full object-contain" />
+                          </div>
+                          <span className="text-[9px] text-neutral-500 font-mono">32×32 Desktop</span>
+                        </div>
+
+                        {/* 48x48 */}
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-10 h-10 bg-white border rounded-lg overflow-hidden flex items-center justify-center">
+                            <img src={pendingFaviconUrl || DEFAULT_FAVICON_URL} alt="48x48" className="w-full h-full object-contain" />
+                          </div>
+                          <span className="text-[9px] text-neutral-500 font-mono">48×48 Taskbar</span>
+                        </div>
+
+                        {/* 180x180 */}
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-12 h-12 bg-white border rounded-xl overflow-hidden flex items-center justify-center">
+                            <img src={pendingFaviconUrl || DEFAULT_FAVICON_URL} alt="180x180" className="w-full h-full object-contain" />
+                          </div>
+                          <span className="text-[9px] text-neutral-500 font-mono">180×180 Mobile</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Column */}
+                <div className="lg:col-span-7 space-y-3">
+                  <label className="block font-bold text-xs text-[#281044]">Favicon Management Actions</label>
+                  
+                  <p className="text-[11px] text-neutral-600 leading-relaxed">
+                    Upload your custom store favicon image. Supports <strong>PNG, JPG, WEBP, ICO, or SVG</strong>. High-resolution square logos are automatically optimized to a crisp 512×512 icon while preserving aspect ratio.
+                  </p>
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {/* Upload / Replace Button */}
+                    <label className="cursor-pointer bg-[#281044] text-white px-4 py-2 rounded-xl font-bold text-xs inline-flex items-center gap-2 hover:bg-[#3b1763] transition-all shadow-xs">
+                      <Upload className="w-4 h-4 text-purple-300" />
+                      <span>{pendingFaviconUrl && pendingFaviconUrl !== DEFAULT_FAVICON_URL ? 'Replace Favicon' : 'Upload Favicon'}</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,.ico,.svg"
+                        onChange={handleFaviconFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Remove Favicon Button */}
+                    {pendingFaviconUrl && pendingFaviconUrl !== DEFAULT_FAVICON_URL && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveFavicon}
+                        className="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 font-bold px-3.5 py-2 rounded-xl text-xs inline-flex items-center gap-1.5 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                        <span>Remove Custom Favicon</span>
+                      </button>
+                    )}
+
+                    {/* Save Favicon Changes Button */}
+                    <button
+                      type="button"
+                      disabled={!isFaviconModified || isSavingFavicon}
+                      onClick={handleSaveFaviconChanges}
+                      className={`px-5 py-2 rounded-xl font-bold text-xs inline-flex items-center gap-2 transition-all shadow-md ${
+                        isFaviconModified
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                          : 'bg-neutral-200 text-neutral-400 cursor-not-allowed opacity-70'
+                      }`}
+                    >
+                      {isSavingFavicon ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      <span>{isSavingFavicon ? 'Saving to Cloud...' : 'Save Changes'}</span>
+                    </button>
+                  </div>
+
+                  {/* Direct Image URL Option */}
+                  <div className="pt-2 border-t border-neutral-100">
+                    <label className="block font-medium text-[11px] text-neutral-600 mb-1">
+                      Or Direct Favicon Image URL
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://... or /rakomart-official-logo.jpg"
+                      value={pendingFaviconUrl}
+                      onChange={(e) => {
+                        setPendingFaviconUrl(e.target.value);
+                        setIsFaviconModified(true);
+                      }}
+                      className="w-full p-2 border rounded-xl bg-neutral-50 text-xs font-mono focus:bg-white focus:ring-2 focus:ring-[#281044] outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Main Website Logo (Facebook Profile Image / Custom Upload) */}
             <div className="sm:col-span-2 space-y-3 p-4 bg-purple-50/70 rounded-xl border border-purple-200">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -997,134 +1273,7 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Homepage Brand Statement & Video Gallery Showcase Uploader */}
-            <div className="sm:col-span-2 space-y-3 p-4 bg-purple-50/70 rounded-xl border border-purple-200">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                  <h4 className="font-bold text-sm text-[#281044] flex items-center gap-1.5">
-                    <Video className="w-4 h-4 text-purple-700" />
-                    <span>Homepage Video & Brand Statement Gallery</span>
-                  </h4>
-                  <p className="text-[11px] text-neutral-600">
-                    Upload or attach a video or featured image banner for the "Choose Better, Choose RakoMart" section on the homepage.
-                  </p>
-                </div>
-                {(settingsForm.brandStatementVideoUrl || settingsForm.brandStatementImageUrl) && (
-                  <button
-                    type="button"
-                    onClick={() => setSettingsForm({ ...settingsForm, brandStatementVideoUrl: '', brandStatementImageUrl: '' })}
-                    className="text-xs bg-white text-red-700 border border-red-300 hover:bg-red-50 font-bold px-3 py-1.5 rounded-lg shrink-0 transition-colors"
-                  >
-                    Clear Custom Video / Image Banner
-                  </button>
-                )}
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-neutral-200">
-                {/* Video Banner Option */}
-                <div className="space-y-2 border-b md:border-b-0 md:border-r border-neutral-200 pb-3 md:pb-0 md:pr-4">
-                  <label className="block font-bold text-xs text-[#281044]">1. Brand Video Banner (MP4 / WebM / MOV)</label>
-                  
-                  {settingsForm.brandStatementVideoUrl ? (
-                    <div className="relative rounded-lg overflow-hidden bg-black aspect-video border">
-                      <video src={settingsForm.brandStatementVideoUrl} controls className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-neutral-50 rounded-lg border border-dashed border-neutral-300 text-center">
-                      <Video className="w-8 h-8 text-neutral-400 mx-auto mb-1" />
-                      <p className="text-[11px] text-neutral-500">No video uploaded yet</p>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <label className="cursor-pointer bg-[#281044] text-white px-3.5 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1.5 hover:bg-[#3b1763] transition-colors w-full justify-center">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Upload Video File</span>
-                      <input
-                        type="file"
-                        accept="video/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (file.size > 25 * 1024 * 1024) {
-                            showToast('Video file size should be less than 25MB for optimal loading');
-                          }
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            if (reader.result) {
-                              setSettingsForm({ ...settingsForm, brandStatementVideoUrl: reader.result as string });
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-
-                    <div>
-                      <label className="block font-medium text-[11px] text-neutral-600 mb-1">Or Direct Video URL</label>
-                      <input
-                        type="text"
-                        placeholder="https://...mp4"
-                        value={settingsForm.brandStatementVideoUrl || ''}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, brandStatementVideoUrl: e.target.value })}
-                        className="w-full p-2 border rounded bg-white text-xs font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Image Banner Option */}
-                <div className="space-y-2">
-                  <label className="block font-bold text-xs text-[#281044]">2. Brand Image Banner (JPG / PNG / WEBP)</label>
-                  
-                  {settingsForm.brandStatementImageUrl ? (
-                    <div className="relative rounded-lg overflow-hidden bg-neutral-100 aspect-video border">
-                      <img src={settingsForm.brandStatementImageUrl} alt="Brand Banner" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-neutral-50 rounded-lg border border-dashed border-neutral-300 text-center">
-                      <ImageIcon className="w-8 h-8 text-neutral-400 mx-auto mb-1" />
-                      <p className="text-[11px] text-neutral-500">No image banner uploaded yet</p>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <label className="cursor-pointer bg-purple-900 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1.5 hover:bg-purple-950 transition-colors w-full justify-center">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Upload Banner Image</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            if (reader.result) {
-                              setSettingsForm({ ...settingsForm, brandStatementImageUrl: reader.result as string });
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-
-                    <div>
-                      <label className="block font-medium text-[11px] text-neutral-600 mb-1">Or Direct Image URL</label>
-                      <input
-                        type="text"
-                        placeholder="https://images.unsplash.com/..."
-                        value={settingsForm.brandStatementImageUrl || ''}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, brandStatementImageUrl: e.target.value })}
-                        className="w-full p-2 border rounded bg-white text-xs font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
             <div className="space-y-2 p-4 bg-pink-50/50 rounded-xl border border-pink-200">
               <h4 className="font-bold text-[#D12053]">bKash Configuration</h4>
               <div>
@@ -1406,16 +1555,19 @@ export const AdminPanel: React.FC = () => {
             <div className="flex items-center justify-end gap-2 border-t pt-3">
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => setIsCategoryModalOpen(false)}
-                className="px-4 py-2 border border-neutral-300 rounded-xl font-bold text-neutral-700 hover:bg-neutral-100"
+                className="px-4 py-2 border border-neutral-300 rounded-xl font-bold text-neutral-700 hover:bg-neutral-100 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-[#281044] text-white rounded-xl font-bold hover:bg-[#3b1763] shadow-xs"
+                disabled={isSaving}
+                className="px-5 py-2 bg-[#281044] text-white rounded-xl font-bold hover:bg-[#3b1763] shadow-xs flex items-center gap-2 disabled:opacity-50"
               >
-                {editingCategory ? 'Save Changes' : 'Create Category'}
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>{isSaving ? 'Saving to Cloud...' : (editingCategory ? 'Save Changes' : 'Create Category')}</span>
               </button>
             </div>
           </form>
@@ -1517,14 +1669,28 @@ export const AdminPanel: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block font-bold mb-1">Image URL (High Res)</label>
+            <div className="space-y-1.5 p-2.5 bg-neutral-50 rounded-xl border">
+              <label className="block font-bold text-[#281044]">Product Image</label>
+              <div className="flex gap-2 items-center">
+                <label className="cursor-pointer bg-[#281044] text-white px-3 py-1.5 rounded-lg font-bold text-[11px] inline-flex items-center gap-1.5 hover:bg-[#3b1763]">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Image File</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProductImageUpload}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-[11px] text-neutral-400 font-medium">or paste URL below</span>
+              </div>
               <input
                 type="text"
                 required
+                placeholder="https://..."
                 value={productFormData.image}
                 onChange={(e) => setProductFormData({ ...productFormData, image: e.target.value })}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded font-mono text-[11px]"
               />
             </div>
 
@@ -1553,13 +1719,19 @@ export const AdminPanel: React.FC = () => {
             <div className="flex justify-end gap-2 pt-2 border-t">
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => setIsProductModalOpen(false)}
-                className="px-4 py-2 border rounded font-bold"
+                className="px-4 py-2 border rounded font-bold disabled:opacity-50"
               >
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 bg-[#281044] text-white font-bold rounded">
-                Save Product
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-4 py-2 bg-[#281044] text-white font-bold rounded hover:bg-[#3b1763] flex items-center gap-2 disabled:opacity-50"
+              >
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>{isSaving ? 'Saving to Cloud...' : 'Save Product'}</span>
               </button>
             </div>
           </form>
@@ -1675,29 +1847,35 @@ export const AdminPanel: React.FC = () => {
                 <input
                   type="file"
                   accept={bannerFormData.mediaType === 'video' ? 'video/*' : 'image/*'}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      if (reader.result) {
-                        if (bannerFormData.mediaType === 'video') {
+                    if (bannerFormData.mediaType === 'video') {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        if (reader.result) {
                           setBannerFormData({
                             ...bannerFormData,
                             videoUrl: reader.result as string,
                             mediaType: 'video',
                             image: bannerFormData.image || '/rakomart-official-logo.jpg'
                           });
-                        } else {
-                          setBannerFormData({
-                            ...bannerFormData,
-                            image: reader.result as string,
-                            mediaType: 'image'
-                          });
                         }
+                      };
+                      reader.readAsDataURL(file);
+                    } else {
+                      try {
+                        const compressed = await compressImageFile(file, 1200, 1200, 0.85);
+                        setBannerFormData({
+                          ...bannerFormData,
+                          image: compressed,
+                          mediaType: 'image'
+                        });
+                      } catch (err) {
+                        console.error('Compress banner image error:', err);
+                        showToast('Error compressing banner image.');
                       }
-                    };
-                    reader.readAsDataURL(file);
+                    }
                   }}
                   className="hidden"
                 />
@@ -1770,13 +1948,19 @@ export const AdminPanel: React.FC = () => {
             <div className="flex justify-end gap-2 pt-2 border-t">
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => setIsBannerModalOpen(false)}
-                className="px-4 py-2 border rounded font-medium text-neutral-600 hover:bg-neutral-50"
+                className="px-4 py-2 border rounded font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
               >
                 Cancel
               </button>
-              <button type="submit" className="px-5 py-2 bg-[#281044] text-white font-bold rounded hover:bg-[#3b1763] transition-colors">
-                Save Banner
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-5 py-2 bg-[#281044] text-white font-bold rounded hover:bg-[#3b1763] transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>{isSaving ? 'Saving to Cloud...' : 'Save Banner'}</span>
               </button>
             </div>
           </form>

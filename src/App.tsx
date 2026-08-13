@@ -12,9 +12,13 @@ import { OrderTrackingView } from './components/OrderTrackingView';
 import { CustomerSupportView } from './components/CustomerSupportView';
 import { InformationalPages } from './components/InformationalPages';
 import { AdminPanel } from './components/AdminPanel';
+import { useFavicon } from './lib/faviconUtils';
 
 const MainLayout: React.FC = () => {
-  const { currentView, toastMessage } = useStore();
+  const { currentView, toastMessage, settings } = useStore();
+
+  // Dynamically synchronize document head favicon with Cloud Firestore settings
+  useFavicon(settings.faviconUrl, settings.faviconUpdatedAt);
 
   const renderView = () => {
     switch (currentView) {

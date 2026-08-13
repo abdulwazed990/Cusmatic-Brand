@@ -1,12 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Truck, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Truck, ArrowLeft, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { getAllDistricts, getUpazilasForDistrict } from '../data/bangladeshData';
-import { DeliveryArea, PaymentMethod } from '../types';
+import { DeliveryArea, PaymentMethod, Order } from '../types';
 import { PaymentGateway } from './PaymentGateway';
+import { OrderConfirmationSlip } from './OrderConfirmationSlip';
 
 export const CheckoutView: React.FC = () => {
-  const { cart, cartTotal, createOrder, navigateTo, settings } = useStore();
+  const { cart, cartTotal, createOrder, navigateTo, settings, cartExpiresAt, cartExpiredNotice } = useStore();
+
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!cartExpiresAt || cart.length === 0) {
+      setTimeLeft('');
+      return;
+    }
+
+    const updateTimer = () => {
+      const diffMs = cartExpiresAt - Date.now();
+      if (diffMs <= 0) {
+        setTimeLeft('Expired');
+        return;
+      }
+      const totalSec = Math.floor(diffMs / 1000);
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      setTimeLeft(`${mins}m ${secs < 10 ? '0' : ''}${secs}s`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [cartExpiresAt, cart.length]);
 
   // Form Fields
   const [customerName, setCustomerName] = useState('');
@@ -55,6 +83,12 @@ export const CheckoutView: React.FC = () => {
   if (cart.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+        {cartExpiredNotice && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center justify-center gap-2 max-w-md mx-auto">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+            <span>{cartExpiredNotice}</span>
+          </div>
+        )}
         <h3 className="text-xl font-bold text-neutral-800 mb-2">No products in your cart to order</h3>
         <p className="text-xs text-neutral-500 mb-6">Please browse and select your favorite cosmetics.</p>
         <button
@@ -79,8 +113,27 @@ export const CheckoutView: React.FC = () => {
       errors.mobile = 'Please enter a valid 11-digit mobile number (e.g. 01700000000).';
     }
 
+    if (customerEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(customerEmail.trim())) {
+        errors.email = 'Please enter a valid email address.';
+      }
+    }
+
+    if (!district.trim()) {
+      errors.district = 'District is required.';
+    }
+
+    if (!upazila.trim()) {
+      errors.upazila = 'Upazila / Thana is required.';
+    }
+
     if (!address.trim() || address.trim().length < 5) {
-      errors.address = 'Please enter your complete delivery address.';
+      errors.address = 'Please enter your complete delivery address (at least 5 characters).';
+    }
+
+    if (cart.length === 0) {
+      errors.cart = 'Your cart is empty. Please select products before placing an order.';
     }
 
     if ((paymentMethod === 'bkash' || paymentMethod === 'nagad') && !transactionId.trim()) {
@@ -91,35 +144,41 @@ export const CheckoutView: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent duplicate orders on multi-click
+
+    setSubmitError(null);
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
 
     try {
-      const created = createOrder({
-        customerName,
-        customerEmail,
-        customerMobile,
+      const created = await createOrder({
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.trim() || undefined,
+        customerMobile: customerMobile.trim(),
         deliveryArea,
         district,
         upazila,
-        address,
+        address: address.trim(),
         items: cart,
         subtotal: cartTotal,
         deliveryFee,
         total: orderTotal,
         paymentMethod,
         paymentAmount: orderTotal,
-        transactionId: paymentMethod !== 'cod' ? transactionId : undefined,
-        notes,
+        transactionId: paymentMethod !== 'cod' ? transactionId.trim() : undefined,
+        notes: notes.trim() || undefined,
       });
 
       setIsSubmitting(false);
-      navigateTo('order_confirmation', { product: undefined });
-    } catch {
+      setConfirmedOrder(created);
+    } catch (err) {
+      console.error('Order creation failed:', err);
       setIsSubmitting(false);
+      setSubmitError('Unable to place your order right now. Please try again.');
     }
   };
 
@@ -136,11 +195,18 @@ export const CheckoutView: React.FC = () => {
         </button>
       </div>
 
-      <div className="text-center max-w-xl mx-auto space-y-1">
+      <div className="text-center max-w-xl mx-auto space-y-2">
         <h1 className="text-2xl font-extrabold text-[#281044]">Order & Delivery Confirmation</h1>
         <p className="text-xs text-neutral-600">
           Please enter accurate contact and delivery details to complete your order.
         </p>
+        {timeLeft && timeLeft !== 'Expired' && (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-200 rounded-full text-xs text-[#281044]">
+            <Clock className="w-3.5 h-3.5 text-purple-700 animate-pulse" />
+            <span className="font-semibold">Cart reserved for:</span>
+            <span className="font-extrabold text-[#281044] font-mono">{timeLeft}</span>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmitOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -198,6 +264,7 @@ export const CheckoutView: React.FC = () => {
                   placeholder="example@mail.com"
                   className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#281044]"
                 />
+                {formErrors.email && <p className="text-xs text-red-600">{formErrors.email}</p>}
               </div>
             </div>
           </div>
@@ -382,18 +449,44 @@ export const CheckoutView: React.FC = () => {
               </div>
             </div>
 
+            {/* Global Submit Error Banner */}
+            {submitError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{submitError}</span>
+              </div>
+            )}
+
+            {/* Validation Errors Summary */}
+            {Object.keys(formErrors).length > 0 && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  Please complete required fields:
+                </p>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px] pl-1">
+                  {Object.values(formErrors).map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Submit Order Button */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-[#281044] hover:bg-[#3b1763] text-white font-extrabold text-base py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.99] disabled:opacity-60"
+              className="w-full bg-[#281044] hover:bg-[#3b1763] text-white font-extrabold text-base py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.99] disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
-                <span>Processing...</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span>PLACING ORDER...</span>
+                </div>
               ) : (
                 <>
                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  <span>Place Order (৳{orderTotal.toLocaleString()})</span>
+                  <span>PLACE ORDER (৳{orderTotal.toLocaleString()})</span>
                 </>
               )}
             </button>
@@ -411,6 +504,21 @@ export const CheckoutView: React.FC = () => {
           </div>
         </div>
       </form>
+
+      {/* Confirmation Slip Modal */}
+      {confirmedOrder && (
+        <OrderConfirmationSlip
+          order={confirmedOrder}
+          settings={settings}
+          onClose={() => {
+            setConfirmedOrder(null);
+            navigateTo('home');
+          }}
+          onPrintInvoice={() => {
+            navigateTo('order_confirmation', { product: undefined });
+          }}
+        />
+      )}
     </div>
   );
 };

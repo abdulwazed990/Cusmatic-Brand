@@ -3,15 +3,17 @@ import { AdminSettings, HeroBanner, Order } from '../types';
 export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   bkashNumber: '01894567890',
   nagadNumber: '01994567890',
-  bkashLogoUrl: 'https://images.seeklogo.com/logo-png/27/1/bkash-logo-png_seeklogo-273684.png',
-  nagadLogoUrl: 'https://iconape.com/wp-content/png_logo_vector/nagad-logo.png',
-  bkashHeaderIconUrl: 'https://images.seeklogo.com/logo-png/27/1/bkash-logo-png_seeklogo-273684.png',
-  nagadHeaderIconUrl: 'https://iconape.com/wp-content/png_logo_vector/nagad-logo.png',
+  bkashLogoUrl: 'https://download.logo.wine/logo/BKash/BKash-Logo.wine.png',
+  nagadLogoUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQF6AKMoHA4ZredzR1-dwcFJ8-N4bM52NQAXBHS2tpUCYEMWZrlKBFDPhY&s=10',
+  bkashHeaderIconUrl: 'https://download.logo.wine/logo/BKash/BKash-Logo.wine.png',
+  nagadHeaderIconUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQF6AKMoHA4ZredzR1-dwcFJ8-N4bM52NQAXBHS2tpUCYEMWZrlKBFDPhY&s=10',
   customerCarePhone: '8801894567890',
   deliveryInsideDhaka: 70,
   deliveryOutsideDhaka: 150,
   siteNotice: '🚚 Fast express delivery on orders over ৳1000! 100% authentic cosmetics guarantee.',
   siteLogoUrl: '/rakomart-official-logo.jpg',
+  faviconUrl: '/rakomart-official-logo.jpg',
+  faviconUpdatedAt: 1,
 };
 
 export const INITIAL_HERO_BANNERS: HeroBanner[] = [

@@ -63,6 +63,16 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface UserCartSession {
+  cartId: string;
+  sessionId: string;
+  userId?: string;
+  items: CartItem[];
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: number | null; // Milliseconds timestamp
+}
+
 export interface Order {
   id: string;
   customerName: string;
@@ -82,6 +92,7 @@ export interface Order {
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
   createdAt: string;
+  updatedAt?: string;
   notes?: string;
   deletionReason?: string;
 }
@@ -120,6 +131,8 @@ export interface AdminSettings {
   deliveryOutsideDhaka: number;
   siteNotice?: string;
   siteLogoUrl?: string;
+  faviconUrl?: string;
+  faviconUpdatedAt?: number;
   brandStatementText?: string;
   brandStatementSubtext?: string;
   brandStatementImageUrl?: string;

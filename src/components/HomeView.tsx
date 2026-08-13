@@ -1,7 +1,6 @@
 import React from 'react';
 import { ArrowRight, ShieldCheck, Truck, Sparkles, HeartHandshake, Star, Award, Phone } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { CATEGORIES } from '../data/mockProducts';
 import { HeroSlider } from './HeroSlider';
 import { ProductCard } from './ProductCard';
 import { RakoMartLogoIcon } from './RakoMartLogo';
@@ -109,28 +108,15 @@ export const HomeView: React.FC = () => {
 
       {/* Customer Support WhatsApp Quick Banner */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Phone className="w-6 h-6 fill-current" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-extrabold text-emerald-950">
-                Need Help Placing Your Order? Contact Customer Care
-              </h3>
-              <p className="text-xs text-emerald-800">
-                Click below to message us directly for instant product information or payment assistance.
-              </p>
-            </div>
-          </div>
-
+        <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-4 flex items-center justify-center shadow-2xs">
           <a
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-full shadow-xs transition-transform active:scale-95 shrink-0 text-center"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-full shadow-xs transition-transform active:scale-95 text-center"
           >
-            Chat on WhatsApp
+            <Phone className="w-4 h-4 fill-current" />
+            <span>Chat on WhatsApp</span>
           </a>
         </div>
       </section>

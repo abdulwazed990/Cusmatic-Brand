@@ -1,0 +1,135 @@
+{
+  "entities": {
+    "products": {
+      "title": "Products",
+      "description": "Store products catalog",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "banglaName": { "type": "string" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "discountPercentage": { "type": "number" },
+        "image": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "category": { "type": "string" },
+        "subCategory": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "stock": { "type": "number" },
+        "isNew": { "type": "boolean" },
+        "isBestSeller": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" },
+        "description": { "type": "string" },
+        "keyFeatures": { "type": "array", "items": { "type": "string" } },
+        "usageInstructions": { "type": "string" },
+        "ingredients": { "type": "string" },
+        "volume": { "type": "string" },
+        "sku": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "price", "category"]
+    },
+    "categories": {
+      "title": "Categories",
+      "description": "Product categories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "banglaName": { "type": "string" },
+        "iconName": { "type": "string" },
+        "image": { "type": "string" },
+        "itemCount": { "type": "number" },
+        "featured": { "type": "boolean" },
+        "subcategories": { "type": "array", "items": { "type": "string" } },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "banners": {
+      "title": "Banners",
+      "description": "Hero and promotional banners",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "position": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "buttonText": { "type": "string" },
+        "link": { "type": "string" },
+        "image": { "type": "string" },
+        "mediaType": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "active": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "position", "title"]
+    },
+    "storeSettings": {
+      "title": "Store Settings",
+      "description": "Global store settings and config",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "storeName": { "type": "string" },
+        "logo": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "facebookPageUrl": { "type": "string" },
+        "instagramUrl": { "type": "string" },
+        "deliveryCharges": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "orders": {
+      "title": "Orders",
+      "description": "Customer purchase orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "address": { "type": "string" },
+        "district": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "customerName", "customerPhone"]
+    },
+    "archivedOrders": {
+      "title": "Archived Orders",
+      "description": "Archived or deleted customer orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "deletionReason": { "type": "string" },
+        "archivedAt": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "userCarts": {
+      "title": "User Session Carts",
+      "description": "User session-isolated shopping carts with 30 minute expiration",
+      "type": "object",
+      "properties": {
+        "cartId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "items": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "expiresAt": { "type": "number" }
+      },
+      "required": ["cartId", "sessionId"]
+    }
+  }
+}
