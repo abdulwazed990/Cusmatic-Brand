@@ -87,6 +87,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
     video.playsInline = true;
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
+    video.setAttribute('x5-playsinline', '');
 
     const tryPlay = () => {
       if (video) {
@@ -125,6 +126,33 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
     };
+  };
+
+  // Immediate callback ref handlers to force autoplay without waiting for effects
+  const setDesktopVideoNode = (el: HTMLVideoElement | null) => {
+    desktopVideoRef.current = el;
+    if (el) {
+      el.defaultMuted = true;
+      el.muted = true;
+      el.playsInline = true;
+      el.setAttribute('playsinline', '');
+      el.setAttribute('webkit-playsinline', '');
+      el.setAttribute('x5-playsinline', '');
+      el.play().catch(() => {});
+    }
+  };
+
+  const setMobileVideoNode = (el: HTMLVideoElement | null) => {
+    mobileVideoRef.current = el;
+    if (el) {
+      el.defaultMuted = true;
+      el.muted = true;
+      el.playsInline = true;
+      el.setAttribute('playsinline', '');
+      el.setAttribute('webkit-playsinline', '');
+      el.setAttribute('x5-playsinline', '');
+      el.play().catch(() => {});
+    }
   };
 
   // Video autoplay listeners
@@ -355,9 +383,10 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
           {/* Desktop Media Display: Video or Image */}
           {isDesktopVideo && !desktopVideoError ? (
             <video
-              ref={desktopVideoRef}
+              ref={setDesktopVideoNode}
               key={`desktop-video-${desktopMediaSrc}`}
               src={desktopMediaSrc}
+              poster={currentBanner.image || desktopMediaSrc}
               autoPlay
               loop
               muted
@@ -367,17 +396,44 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
               controlsList="nodownload nofullscreen noremoteplayback"
               onContextMenu={(e) => e.preventDefault()}
               onError={() => setDesktopVideoError(true)}
-              onLoadedMetadata={(e) => handleMediaLoad(desktopMediaSrc, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
+              onLoadedMetadata={(e) => {
+                e.currentTarget.muted = true;
+                e.currentTarget.play().catch(() => {});
+                handleMediaLoad(desktopMediaSrc, e.currentTarget.videoWidth, e.currentTarget.videoHeight);
+              }}
+              onLoadedData={(e) => {
+                e.currentTarget.muted = true;
+                e.currentTarget.play().catch(() => {});
+              }}
+              onCanPlay={(e) => {
+                e.currentTarget.muted = true;
+                e.currentTarget.play().catch(() => {});
+              }}
+              onCanPlayThrough={(e) => {
+                e.currentTarget.muted = true;
+                e.currentTarget.play().catch(() => {});
+              }}
+              onTimeUpdate={(e) => {
+                const v = e.currentTarget;
+                if (v.duration && v.currentTime > 0 && v.duration - v.currentTime < 0.15) {
+                  v.currentTime = 0;
+                  v.play().catch(() => {});
+                }
+              }}
+              onWaiting={(e) => {
+                e.currentTarget.play().catch(() => {});
+              }}
+              onStalled={(e) => {
+                e.currentTarget.play().catch(() => {});
+              }}
               onEnded={(e) => {
                 e.currentTarget.currentTime = 0;
                 e.currentTarget.play().catch(() => {});
               }}
               onPause={(e) => {
-                e.currentTarget.play().catch(() => {});
-              }}
-              onLoadedData={(e) => {
-                e.currentTarget.muted = true;
-                e.currentTarget.play().catch(() => {});
+                if (isPlaying) {
+                  e.currentTarget.play().catch(() => {});
+                }
               }}
               className="relative z-0 w-full h-full max-h-[900px] object-contain pointer-events-none select-none mx-auto block"
             />
@@ -495,9 +551,10 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
           {/* Mobile Media Display: Video or Image */}
           {isMobileVideo && !mobileVideoError ? (
             <video
-              ref={mobileVideoRef}
+              ref={setMobileVideoNode}
               key={`mobile-video-${mobileMediaSrc}`}
               src={mobileMediaSrc}
+              poster={currentBanner.mobileImage || currentBanner.image || mobileMediaSrc}
               autoPlay
               loop
               muted
@@ -507,17 +564,44 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
               controlsList="nodownload nofullscreen noremoteplayback"
               onContextMenu={(e) => e.preventDefault()}
               onError={() => setMobileVideoError(true)}
-              onLoadedMetadata={(e) => handleMediaLoad(mobileMediaSrc, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
+              onLoadedMetadata={(e) => {
+                e.currentTarget.muted = true;
+                e.currentTarget.play().catch(() => {});
+                handleMediaLoad(mobileMediaSrc, e.currentTarget.videoWidth, e.currentTarget.videoHeight);
+              }}
+              onLoadedData={(e) => {
+                e.currentTarget.muted = true;
+                e.currentTarget.play().catch(() => {});
+              }}
+              onCanPlay={(e) => {
+                e.currentTarget.muted = true;
+                e.currentTarget.play().catch(() => {});
+              }}
+              onCanPlayThrough={(e) => {
+                e.currentTarget.muted = true;
+                e.currentTarget.play().catch(() => {});
+              }}
+              onTimeUpdate={(e) => {
+                const v = e.currentTarget;
+                if (v.duration && v.currentTime > 0 && v.duration - v.currentTime < 0.15) {
+                  v.currentTime = 0;
+                  v.play().catch(() => {});
+                }
+              }}
+              onWaiting={(e) => {
+                e.currentTarget.play().catch(() => {});
+              }}
+              onStalled={(e) => {
+                e.currentTarget.play().catch(() => {});
+              }}
               onEnded={(e) => {
                 e.currentTarget.currentTime = 0;
                 e.currentTarget.play().catch(() => {});
               }}
               onPause={(e) => {
-                e.currentTarget.play().catch(() => {});
-              }}
-              onLoadedData={(e) => {
-                e.currentTarget.muted = true;
-                e.currentTarget.play().catch(() => {});
+                if (isPlaying) {
+                  e.currentTarget.play().catch(() => {});
+                }
               }}
               className="relative z-0 w-full h-full max-h-[650px] object-contain pointer-events-none select-none mx-auto block"
             />
