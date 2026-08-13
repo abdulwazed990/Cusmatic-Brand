@@ -8,6 +8,7 @@ import { useStore } from '../context/StoreContext';
 import { OrderStatus, Product, HeroBanner, Category } from '../types';
 import { RakoMartLogoIcon } from './RakoMartLogo';
 import { compressImageFile, processFaviconFile } from '../lib/imageUtils';
+import { uploadAssetToCloudStorage } from '../lib/cloudStorage';
 import { DEFAULT_FAVICON_URL } from '../lib/faviconUtils';
 
 export const AdminPanel: React.FC = () => {
@@ -85,18 +86,19 @@ export const AdminPanel: React.FC = () => {
   const handleFaviconFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('Favicon file size must be less than 10MB');
+    if (file.size > 20 * 1024 * 1024) {
+      showToast('Favicon file size must be less than 20MB');
       return;
     }
     try {
-      const dataUrl = await processFaviconFile(file);
-      setPendingFaviconUrl(dataUrl);
+      showToast('Uploading favicon to Cloud Storage...');
+      const cloudUrl = await uploadAssetToCloudStorage(file, 'favicons', (msg) => showToast(msg));
+      setPendingFaviconUrl(cloudUrl);
       setIsFaviconModified(true);
-      showToast('Favicon loaded for preview. Click "Save Changes" to apply globally.');
+      showToast('Favicon uploaded to Cloud Storage. Click "Save Changes" to publish globally.');
     } catch (err) {
       console.error('Favicon upload error:', err);
-      showToast('Error reading favicon file.');
+      showToast('Error uploading favicon file to Cloud Storage.');
     }
   };
 
@@ -284,11 +286,13 @@ export const AdminPanel: React.FC = () => {
     if (!file) return;
 
     try {
-      const compressed = await compressImageFile(file, 800, 800, 0.8);
-      setCategoryFormData((prev) => ({ ...prev, image: compressed }));
+      showToast('Uploading category icon to Cloud Storage...');
+      const cloudUrl = await uploadAssetToCloudStorage(file, 'categories', (msg) => showToast(msg));
+      setCategoryFormData((prev) => ({ ...prev, image: cloudUrl }));
+      showToast('Category image uploaded to Cloud Storage!');
     } catch (err) {
-      console.error('Image compress error:', err);
-      showToast('Error processing category image.');
+      console.error('Image upload error:', err);
+      showToast('Error uploading category image.');
     }
   };
 
@@ -297,11 +301,13 @@ export const AdminPanel: React.FC = () => {
     if (!file) return;
 
     try {
-      const compressed = await compressImageFile(file, 1000, 1000, 0.85);
-      setProductFormData((prev) => ({ ...prev, image: compressed }));
+      showToast('Uploading product image to Cloud Storage...');
+      const cloudUrl = await uploadAssetToCloudStorage(file, 'products', (msg) => showToast(msg));
+      setProductFormData((prev) => ({ ...prev, image: cloudUrl }));
+      showToast('Product image uploaded to Cloud Storage!');
     } catch (err) {
-      console.error('Image compress error:', err);
-      showToast('Error processing product image.');
+      console.error('Image upload error:', err);
+      showToast('Error uploading product image.');
     }
   };
 
@@ -1239,20 +1245,22 @@ export const AdminPanel: React.FC = () => {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-                          if (file.size > 5 * 1024 * 1024) {
-                            showToast('Image file size must be less than 5MB');
+                          if (file.size > 20 * 1024 * 1024) {
+                            showToast('Image file size must be less than 20MB');
                             return;
                           }
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            if (reader.result) {
-                              setSettingsForm({ ...settingsForm, siteLogoUrl: reader.result as string });
-                            }
-                          };
-                          reader.readAsDataURL(file);
+                          try {
+                            showToast('Uploading logo to Cloud Storage...');
+                            const cloudUrl = await uploadAssetToCloudStorage(file, 'logos', (msg) => showToast(msg));
+                            setSettingsForm((prev) => ({ ...prev, siteLogoUrl: cloudUrl }));
+                            showToast('Logo uploaded to Cloud Storage! Click "Save Settings" to publish globally.');
+                          } catch (err) {
+                            console.error('Logo upload error:', err);
+                            showToast('Failed to upload logo file.');
+                          }
                         }}
                         className="hidden"
                       />
@@ -1850,31 +1858,31 @@ export const AdminPanel: React.FC = () => {
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    if (bannerFormData.mediaType === 'video') {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        if (reader.result) {
-                          setBannerFormData({
-                            ...bannerFormData,
-                            videoUrl: reader.result as string,
-                            mediaType: 'video',
-                            image: bannerFormData.image || '/rakomart-official-logo.jpg'
-                          });
-                        }
-                      };
-                      reader.readAsDataURL(file);
-                    } else {
-                      try {
-                        const compressed = await compressImageFile(file, 1200, 1200, 0.85);
-                        setBannerFormData({
-                          ...bannerFormData,
-                          image: compressed,
+                    try {
+                      showToast(`Uploading ${bannerFormData.mediaType === 'video' ? 'video' : 'banner image'} to Cloud Storage...`);
+                      const cloudUrl = await uploadAssetToCloudStorage(
+                        file,
+                        'banners',
+                        (msg) => showToast(msg)
+                      );
+                      if (bannerFormData.mediaType === 'video') {
+                        setBannerFormData((prev) => ({
+                          ...prev,
+                          videoUrl: cloudUrl,
+                          mediaType: 'video',
+                          image: prev.image || '/rakomart-official-logo.jpg'
+                        }));
+                      } else {
+                        setBannerFormData((prev) => ({
+                          ...prev,
+                          image: cloudUrl,
                           mediaType: 'image'
-                        });
-                      } catch (err) {
-                        console.error('Compress banner image error:', err);
-                        showToast('Error compressing banner image.');
+                        }));
                       }
+                      showToast('Banner file uploaded to Cloud Storage! Click "Save Banner" to publish.');
+                    } catch (err) {
+                      console.error('Banner upload error:', err);
+                      showToast('Error uploading banner file to Cloud Storage.');
                     }
                   }}
                   className="hidden"
