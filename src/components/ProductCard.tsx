@@ -17,7 +17,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleQuickOrder = (e: React.MouseEvent) => {
     e.stopPropagation();
     addToCart(product, 1);
-    navigateTo('checkout');
+    navigateTo('checkout', { product });
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {

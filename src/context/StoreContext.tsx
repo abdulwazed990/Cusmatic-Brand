@@ -122,8 +122,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Session & Private Cart State (30-Minute Expiration, isolated per visitor session)
   const [sessionId] = useState<string>(() => getSessionId());
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [cartExpiresAt, setCartExpiresAt] = useState<number | null>(null);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const sid = getSessionId();
+      const raw = localStorage.getItem(`rakomart_cart_${sid}`) || localStorage.getItem('rakomart_cart');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed.items && Array.isArray(parsed.items)) {
+          if (parsed.expiresAt && Date.now() >= parsed.expiresAt) {
+            return [];
+          }
+          return parsed.items;
+        }
+      }
+    } catch {}
+    return [];
+  });
+  const [cartExpiresAt, setCartExpiresAt] = useState<number | null>(() => {
+    try {
+      const sid = getSessionId();
+      const raw = localStorage.getItem(`rakomart_cart_${sid}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.expiresAt && Date.now() < parsed.expiresAt) {
+          return parsed.expiresAt;
+        }
+      }
+    } catch {}
+    return null;
+  });
   const [cartExpiredNotice, setCartExpiredNotice] = useState<string | null>(null);
 
   // Persistent Global Website States with Local Cache Fallback for zero-delay loading
@@ -787,13 +815,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const searchCustomerOrders = (mobileNumber: string): Order[] => {
-    const cleanNumber = mobileNumber.trim().replace(/\D/g, '');
-    if (!cleanNumber) return [];
+  const searchCustomerOrders = (searchQuery: string): Order[] => {
+    const q = searchQuery.trim();
+    if (!q) return [];
+    const cleanNumber = q.replace(/\D/g, '');
 
     return orders.filter((o) => {
-      const orderMobile = o.customerMobile.replace(/\D/g, '');
-      return orderMobile.includes(cleanNumber) || cleanNumber.includes(orderMobile);
+      if (cleanNumber && cleanNumber.length >= 4) {
+        const orderMobile = o.customerMobile.replace(/\D/g, '');
+        if (orderMobile.includes(cleanNumber) || cleanNumber.includes(orderMobile)) {
+          return true;
+        }
+      }
+      if (o.id.toLowerCase().includes(q.toLowerCase())) {
+        return true;
+      }
+      if (o.customerName.toLowerCase().includes(q.toLowerCase())) {
+        return true;
+      }
+      if (o.transactionId && o.transactionId.toLowerCase().includes(q.toLowerCase())) {
+        return true;
+      }
+      return false;
     });
   };
 

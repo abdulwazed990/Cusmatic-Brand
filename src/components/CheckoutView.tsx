@@ -7,14 +7,27 @@ import { PaymentGateway } from './PaymentGateway';
 import { OrderConfirmationSlip } from './OrderConfirmationSlip';
 
 export const CheckoutView: React.FC = () => {
-  const { cart, cartTotal, createOrder, navigateTo, settings, cartExpiresAt, cartExpiredNotice } = useStore();
+  const { cart, cartTotal, createOrder, navigateTo, settings, cartExpiresAt, cartExpiredNotice, selectedProduct, addToCart } = useStore();
+
+  // If cart is empty but customer navigated with a selected product, ensure it is added to cart
+  useEffect(() => {
+    if (cart.length === 0 && selectedProduct) {
+      addToCart(selectedProduct, 1);
+    }
+  }, [cart.length, selectedProduct]);
+
+  // Ensure effective items are never lost even before re-render
+  const effectiveCart = cart.length > 0 ? cart : (selectedProduct ? [{ product: selectedProduct, quantity: 1 }] : []);
+  const effectiveCartTotal = effectiveCart.length > 0
+    ? effectiveCart.reduce((acc, item) => acc + item.product.price * item.quantity, 0)
+    : cartTotal;
 
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!cartExpiresAt || cart.length === 0) {
+    if (!cartExpiresAt || effectiveCart.length === 0) {
       setTimeLeft('');
       return;
     }
@@ -34,7 +47,7 @@ export const CheckoutView: React.FC = () => {
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [cartExpiresAt, cart.length]);
+  }, [cartExpiresAt, effectiveCart.length]);
 
   // Form Fields
   const [customerName, setCustomerName] = useState('');
@@ -78,9 +91,9 @@ export const CheckoutView: React.FC = () => {
       ? settings.deliveryInsideDhaka
       : settings.deliveryOutsideDhaka;
 
-  const orderTotal = cartTotal + deliveryFee;
+  const orderTotal = effectiveCartTotal + deliveryFee;
 
-  if (cart.length === 0) {
+  if (effectiveCart.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
         {cartExpiredNotice && (
@@ -132,12 +145,17 @@ export const CheckoutView: React.FC = () => {
       errors.address = 'Please enter your complete delivery address (at least 5 characters).';
     }
 
-    if (cart.length === 0) {
+    if (effectiveCart.length === 0) {
       errors.cart = 'Your cart is empty. Please select products before placing an order.';
     }
 
-    if ((paymentMethod === 'bkash' || paymentMethod === 'nagad') && !transactionId.trim()) {
-      errors.transactionId = 'Payment Transaction ID is required for digital wallet payments.';
+    if (paymentMethod === 'bkash' || paymentMethod === 'nagad') {
+      const cleanTx = transactionId.trim();
+      if (!cleanTx) {
+        errors.transactionId = 'Payment Transaction ID is required for digital wallet payments.';
+      } else if (cleanTx.length < 4) {
+        errors.transactionId = 'Please enter a valid Transaction ID (at least 4 characters).';
+      }
     }
 
     setFormErrors(errors);
@@ -163,8 +181,8 @@ export const CheckoutView: React.FC = () => {
         district,
         upazila,
         address: address.trim(),
-        items: cart,
-        subtotal: cartTotal,
+        items: effectiveCart,
+        subtotal: effectiveCartTotal,
         deliveryFee,
         total: orderTotal,
         paymentMethod,
@@ -413,7 +431,7 @@ export const CheckoutView: React.FC = () => {
 
             {/* Item List */}
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-              {cart.map((item) => (
+              {effectiveCart.map((item) => (
                 <div key={item.product.id} className="flex items-center gap-3 text-xs">
                   <img
                     src={item.product.image}
@@ -437,7 +455,7 @@ export const CheckoutView: React.FC = () => {
             <div className="pt-3 border-t border-neutral-100 space-y-2 text-xs">
               <div className="flex justify-between text-neutral-600">
                 <span>Subtotal</span>
-                <span className="font-semibold text-neutral-900">৳{cartTotal.toLocaleString()}</span>
+                <span className="font-semibold text-neutral-900">৳{effectiveCartTotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-neutral-600">
                 <span>Delivery Fee ({deliveryArea === 'inside_dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'})</span>

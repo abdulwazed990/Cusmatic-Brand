@@ -25,7 +25,15 @@ export const OrderConfirmationSlip: React.FC<OrderConfirmationSlipProps> = ({
     cleanPhone = '880' + cleanPhone;
   }
 
-  const whatsappMessage = `Hello RakoMart, I have placed an order.\n\nOrder ID: ${order.id}\nName: ${order.customerName}\nMobile: ${order.customerMobile}\nTotal Amount: ৳${order.total.toLocaleString()}\n\nPlease confirm my order.`;
+  const paymentMethodLabel =
+    order.paymentMethod === 'cod'
+      ? 'Cash on Delivery'
+      : order.paymentMethod === 'bkash'
+      ? 'bKash'
+      : 'Nagad';
+
+  const txInfo = order.transactionId ? `\nTransaction ID: ${order.transactionId}` : '';
+  const whatsappMessage = `Hello RakoMart, I have placed an order.\n\nOrder ID: ${order.id}\nName: ${order.customerName}\nMobile: ${order.customerMobile}\nDelivery: ${order.deliveryArea === 'inside_dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'}\nPayment: ${paymentMethodLabel}${txInfo}\nTotal Amount: ৳${order.total.toLocaleString()}\nStatus: ${order.orderStatus || 'Order Received'}\n\nPlease confirm my order.`;
   const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
   const handlePrint = () => {
@@ -148,9 +156,29 @@ export const OrderConfirmationSlip: React.FC<OrderConfirmationSlipProps> = ({
               <span>TOTAL PAYABLE:</span>
               <span>৳{order.total.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between text-[11px] text-neutral-500 pt-1">
+            <div className="flex justify-between text-[11px] text-neutral-600 pt-1 border-t border-neutral-200">
               <span>Payment Method:</span>
-              <span className="font-bold uppercase text-[#281044]">{order.paymentMethod}</span>
+              <span className="font-bold uppercase text-[#281044]">
+                {order.paymentMethod === 'cod'
+                  ? 'Cash on Delivery (COD)'
+                  : order.paymentMethod === 'bkash'
+                  ? 'bKash Digital Wallet'
+                  : 'Nagad Digital Wallet'}
+              </span>
+            </div>
+            {order.transactionId && (
+              <div className="flex justify-between items-center text-[11px] text-neutral-600 pt-0.5">
+                <span>Transaction ID:</span>
+                <span className="font-mono font-bold text-purple-900 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 select-all">
+                  {order.transactionId}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between text-[11px] text-neutral-600 pt-0.5">
+              <span>Order Status:</span>
+              <span className="font-bold text-emerald-700">
+                {order.orderStatus || (order.paymentMethod === 'cod' ? 'New Order' : 'Payment Processing')}
+              </span>
             </div>
           </div>
 

@@ -31,7 +31,7 @@ export const ProductDetails: React.FC = () => {
 
   const handleBuyNow = () => {
     addToCart(selectedProduct, quantity);
-    navigateTo('checkout');
+    navigateTo('checkout', { product: selectedProduct });
   };
 
   let rawPhone = settings.customerCarePhone || '8801410425948';
