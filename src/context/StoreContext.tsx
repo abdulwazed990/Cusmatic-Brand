@@ -71,10 +71,10 @@ interface StoreContextType {
     transactionId?: string;
     notes?: string;
   }) => Promise<Order>;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: OrderStatus, reason?: string) => Promise<void>;
   verifyPayment: (orderId: string, status: 'VERIFIED' | 'REJECTED') => Promise<void>;
   archiveOrder: (orderId: string, reason: string) => Promise<void>;
-  searchCustomerOrders: (mobileNumber: string) => Order[];
+  searchCustomerOrders: (searchQuery: string) => Order[];
 
   // Banners
   banners: HeroBanner[];
@@ -885,16 +885,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+  const updateOrderStatus = async (orderId: string, status: OrderStatus, reason?: string) => {
     const nowIso = new Date().toISOString();
+    const updatePayload: Partial<Order> = {
+      orderStatus: status,
+      updatedAt: nowIso,
+      ...(reason ? { deletionReason: reason } : {}),
+    };
+
     setOrders((prev) => {
-      const updated = prev.map((o) => (o.id === orderId ? { ...o, orderStatus: status, updatedAt: nowIso } : o));
+      const updated = prev.map((o) => (o.id === orderId ? { ...o, ...updatePayload } : o));
       try { localStorage.setItem('rakomart_orders_cache', JSON.stringify(updated)); } catch {}
       return updated;
     });
 
     try {
-      await setDoc(doc(db, 'orders', orderId), { orderStatus: status, updatedAt: nowIso }, { merge: true });
+      await setDoc(doc(db, 'orders', orderId), updatePayload, { merge: true });
       showToast(`Order #${orderId} status: ${status}`);
     } catch (err) {
       console.error(err);
@@ -930,31 +936,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const orderToArchive = orders.find((o) => o.id === orderId);
     if (!orderToArchive) return;
 
+    const nowIso = new Date().toISOString();
     const archived: Order = {
       ...orderToArchive,
-      orderStatus: 'Archived',
+      orderStatus: 'Cancelled',
       deletionReason: reason,
+      updatedAt: nowIso,
+      archivedAt: nowIso,
     };
 
+    // Update in orders list as Cancelled so it remains visible and searchable in order history
     setOrders((prev) => {
-      const updated = prev.filter((o) => o.id !== orderId);
+      const updated = prev.map((o) => (o.id === orderId ? archived : o));
       try { localStorage.setItem('rakomart_orders_cache', JSON.stringify(updated)); } catch {}
       return updated;
     });
 
     setArchivedOrders((prev) => {
-      const updated = [archived, ...prev];
+      const filtered = prev.filter((o) => o.id !== orderId);
+      const updated = [archived, ...filtered];
       try { localStorage.setItem('rakomart_archived_orders_cache', JSON.stringify(updated)); } catch {}
       return updated;
     });
 
     try {
+      await setDoc(doc(db, 'orders', orderId), archived, { merge: true });
       await setDoc(doc(db, 'archivedOrders', orderId), archived, { merge: true });
-      await deleteDoc(doc(db, 'orders', orderId));
-      showToast(`Order #${orderId} archived in Cloud database.`);
+      showToast(`Order #${orderId} marked as Cancelled.`);
     } catch (err) {
       console.error(err);
-      showToast('Order archived locally.');
+      showToast(`Order #${orderId} marked as Cancelled locally.`);
     }
   };
 
@@ -962,23 +973,56 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const q = searchQuery.trim();
     if (!q) return [];
     const cleanNumber = q.replace(/\D/g, '');
+    const cleanQ = q.toLowerCase();
 
-    return orders.filter((o) => {
+    // Search through all orders (both active and cancelled/archived)
+    const allCombined = [...orders, ...archivedOrders];
+    const uniqueMap = new Map<string, Order>();
+    allCombined.forEach((o) => {
+      if (!uniqueMap.has(o.id)) {
+        uniqueMap.set(o.id, o);
+      } else {
+        const existing = uniqueMap.get(o.id)!;
+        const timeExisting = new Date(existing.updatedAt || existing.createdAt).getTime() || 0;
+        const timeNew = new Date(o.updatedAt || o.createdAt).getTime() || 0;
+        if (timeNew >= timeExisting) {
+          uniqueMap.set(o.id, o);
+        }
+      }
+    });
+
+    const combinedList = Array.from(uniqueMap.values());
+
+    return combinedList.filter((o) => {
+      // 1. Mobile Number search (clean digits)
       if (cleanNumber && cleanNumber.length >= 4) {
-        const orderMobile = o.customerMobile.replace(/\D/g, '');
+        const orderMobile = (o.customerMobile || '').replace(/\D/g, '');
         if (orderMobile.includes(cleanNumber) || cleanNumber.includes(orderMobile)) {
           return true;
         }
       }
-      if (o.id.toLowerCase().includes(q.toLowerCase())) {
+
+      // 2. Order ID search (exact or partial, ignore dashes/case)
+      const orderIdLower = (o.id || '').toLowerCase();
+      if (orderIdLower.includes(cleanQ)) {
         return true;
       }
-      if (o.customerName.toLowerCase().includes(q.toLowerCase())) {
+      const orderIdClean = orderIdLower.replace(/[^a-z0-9]/g, '');
+      const qClean = cleanQ.replace(/[^a-z0-9]/g, '');
+      if (qClean && orderIdClean.includes(qClean)) {
         return true;
       }
-      if (o.transactionId && o.transactionId.toLowerCase().includes(q.toLowerCase())) {
+
+      // 3. Customer Name
+      if (o.customerName && o.customerName.toLowerCase().includes(cleanQ)) {
         return true;
       }
+
+      // 4. Transaction ID
+      if (o.transactionId && o.transactionId.toLowerCase().includes(cleanQ)) {
+        return true;
+      }
+
       return false;
     });
   };

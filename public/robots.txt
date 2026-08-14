@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rakomart.com/sitemap.xml

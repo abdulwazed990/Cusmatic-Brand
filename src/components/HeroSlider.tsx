@@ -477,7 +477,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
           )}
 
           {/* Desktop Prev / Next Navigation Arrows */}
-          {activeBanners.length > 1 && (
+          {activeBanners.length > 1 && position !== 'hero2' && (
             <>
               <button
                 onClick={(e) => {
@@ -645,7 +645,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
           )}
 
           {/* Mobile Prev / Next Navigation Arrows */}
-          {activeBanners.length > 1 && (
+          {activeBanners.length > 1 && position !== 'hero2' && (
             <>
               <button
                 onClick={(e) => {

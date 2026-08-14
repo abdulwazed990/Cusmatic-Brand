@@ -1,25 +1,44 @@
-import React, { useState } from 'react';
-import { Search, Truck, Clock, ShieldCheck, FileText, CheckCircle2, AlertCircle, Phone } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Search, Truck, Clock, ShieldCheck, FileText, CheckCircle2, AlertCircle, Phone, XCircle, AlertTriangle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Order } from '../types';
 import { RakoMartLogo } from './RakoMartLogo';
 
 export const OrderTrackingView: React.FC = () => {
-  const { searchCustomerOrders, navigateTo } = useStore();
+  const { searchCustomerOrders, orders, archivedOrders } = useStore();
 
-  const [mobileNumber, setMobileNumber] = useState('');
+  const [searchQueryInput, setSearchQueryInput] = useState('');
   const [searched, setSearched] = useState(false);
+  const [lastSubmittedQuery, setLastSubmittedQuery] = useState('');
   const [foundOrders, setFoundOrders] = useState<Order[]>([]);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<Order | null>(null);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mobileNumber.trim()) return;
-
-    const results = searchCustomerOrders(mobileNumber);
+  const performSearch = (query: string) => {
+    if (!query.trim()) return;
+    const results = searchCustomerOrders(query);
     setFoundOrders(results);
     setSearched(true);
+    setLastSubmittedQuery(query);
   };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    performSearch(searchQueryInput);
+  };
+
+  // Real-time synchronization: When cloud orders update, re-sync searched orders
+  useEffect(() => {
+    if (searched && lastSubmittedQuery.trim()) {
+      const results = searchCustomerOrders(lastSubmittedQuery);
+      setFoundOrders(results);
+      if (selectedOrderForInvoice) {
+        const updatedSelected = results.find((o) => o.id === selectedOrderForInvoice.id);
+        if (updatedSelected) {
+          setSelectedOrderForInvoice(updatedSelected);
+        }
+      }
+    }
+  }, [orders, archivedOrders]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -53,27 +72,27 @@ export const OrderTrackingView: React.FC = () => {
         </div>
         <h1 className="text-2xl font-extrabold text-[#281044]">Order Tracking & Status</h1>
         <p className="text-xs text-neutral-600 max-w-md mx-auto">
-          Enter the 11-digit mobile number used during order placement to view active and past order status.
+          Enter your mobile number or Order ID to track the real-time status of all active and past orders.
         </p>
       </div>
 
-      {/* Mobile Search Input Card */}
+      {/* Search Input Card */}
       <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-xs max-w-xl mx-auto">
         <form onSubmit={handleSearch} className="space-y-4">
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-neutral-800">
-              Customer Mobile Number
+              Customer Mobile Number or Order ID
             </label>
             <div className="relative">
               <input
-                type="tel"
-                value={mobileNumber}
-                onChange={(e) => setMobileNumber(e.target.value)}
-                placeholder="017XXXXXXXX"
+                type="text"
+                value={searchQueryInput}
+                onChange={(e) => setSearchQueryInput(e.target.value)}
+                placeholder="017XXXXXXXX or RM-YYYYMMDD-XXXXXX"
                 required
                 className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-300 rounded-xl text-sm font-semibold tracking-wider focus:outline-none focus:ring-2 focus:ring-[#281044]"
               />
-              <Phone className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
@@ -101,84 +120,114 @@ export const OrderTrackingView: React.FC = () => {
               <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
               <h4 className="text-base font-bold text-neutral-800">No Orders Found</h4>
               <p className="text-xs text-neutral-500 max-w-sm mx-auto">
-                No active or past orders were found for this mobile number. Please verify your mobile number and try again.
+                No active or past orders were found for "{lastSubmittedQuery}". Please verify your mobile number or order ID and try again.
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {foundOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-xs space-y-4 hover:border-purple-300 transition-colors"
-                >
-                  {/* Top Bar: ID & Status */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-neutral-100 text-xs">
-                    <div>
-                      <span className="text-neutral-500 font-bold block">Order ID</span>
-                      <span className="font-mono font-extrabold text-[#281044] text-sm">#{order.id}</span>
+              {foundOrders.map((order) => {
+                const isCancelled = order.orderStatus === 'Cancelled' || order.orderStatus === 'Archived';
+
+                return (
+                  <div
+                    key={order.id}
+                    className={`bg-white rounded-2xl border p-5 shadow-xs space-y-4 transition-colors ${
+                      isCancelled ? 'border-red-200 hover:border-red-300' : 'border-neutral-200 hover:border-purple-300'
+                    }`}
+                  >
+                    {/* Top Bar: ID & Status */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-neutral-100 text-xs">
+                      <div>
+                        <span className="text-neutral-500 font-bold block">Order ID</span>
+                        <span className="font-mono font-extrabold text-[#281044] text-sm">#{order.id}</span>
+                      </div>
+
+                      <div>
+                        <span className="text-neutral-500 font-bold block">Order Date</span>
+                        <span className="text-neutral-800 font-medium">
+                          {new Date(order.createdAt).toLocaleDateString('en-US')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-neutral-500 font-bold block mb-0.5">Current Status</span>
+                        <span
+                          className={`inline-block px-3 py-0.5 rounded-full text-[11px] font-extrabold border ${getStatusBadge(
+                            order.orderStatus
+                          )}`}
+                        >
+                          {order.orderStatus}
+                        </span>
+                      </div>
                     </div>
 
-                    <div>
-                      <span className="text-neutral-500 font-bold block">Order Date</span>
-                      <span className="text-neutral-800 font-medium">
-                        {new Date(order.createdAt).toLocaleDateString('en-US')}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span className="text-neutral-500 font-bold block mb-0.5">Current Status</span>
-                      <span
-                        className={`inline-block px-3 py-0.5 rounded-full text-[11px] font-extrabold border ${getStatusBadge(
-                          order.orderStatus
-                        )}`}
-                      >
-                        {order.orderStatus}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Items Brief */}
-                  <div className="space-y-2 text-xs">
-                    <span className="font-bold text-neutral-700 block">Ordered Items:</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {order.items.map((item) => (
-                        <div key={item.product.id} className="flex items-center gap-2.5 bg-neutral-50 p-2 rounded-lg border">
-                          <img
-                            src={item.product.image}
-                            alt={item.product.title}
-                            className="w-10 h-10 rounded object-cover bg-white"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-neutral-900 truncate">{item.product.title}</p>
-                            <span className="text-neutral-500 text-[11px]">
-                              ৳{item.product.price} x {item.quantity}
-                            </span>
-                          </div>
+                    {/* Prominent Cancellation Alert for Cancelled Orders */}
+                    {isCancelled && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 space-y-1">
+                        <div className="flex items-center gap-2 text-red-800 font-bold text-xs">
+                          <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                          <span>Order Cancelled</span>
                         </div>
-                      ))}
+                        {order.deletionReason && (
+                          <p className="text-xs text-red-700 font-medium">
+                            <span className="font-bold">Reason:</span> {order.deletionReason}
+                          </p>
+                        )}
+                        {(order.updatedAt || order.archivedAt) && (
+                          <p className="text-[11px] text-red-600">
+                            <span className="font-semibold">Cancellation Date:</span>{' '}
+                            {new Date(order.updatedAt || order.archivedAt || order.createdAt).toLocaleString('en-US', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Items Brief */}
+                    <div className="space-y-2 text-xs">
+                      <span className="font-bold text-neutral-700 block">Ordered Items:</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {order.items.map((item) => (
+                          <div key={item.product.id} className="flex items-center gap-2.5 bg-neutral-50 p-2 rounded-lg border">
+                            <img
+                              src={item.product.image}
+                              alt={item.product.title}
+                              className="w-10 h-10 rounded object-cover bg-white"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-neutral-900 truncate">{item.product.title}</p>
+                              <span className="text-neutral-500 text-[11px]">
+                                ৳{item.product.price} x {item.quantity}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Payment & Action Strip */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-neutral-100 text-xs">
+                      <div>
+                        <span className="text-neutral-500 font-bold">Total Amount:</span>{' '}
+                        <span className="text-sm font-extrabold text-[#281044]">
+                          ৳{order.total.toLocaleString()}
+                        </span>{' '}
+                        <span className="text-[11px] text-neutral-500">({order.paymentMethod.toUpperCase()})</span>
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedOrderForInvoice(order)}
+                        className="px-3.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#281044] rounded-lg font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>View Invoice Details</span>
+                      </button>
                     </div>
                   </div>
-
-                  {/* Payment & Action Strip */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-neutral-100 text-xs">
-                    <div>
-                      <span className="text-neutral-500 font-bold">Total Amount:</span>{' '}
-                      <span className="text-sm font-extrabold text-[#281044]">
-                        ৳{order.total.toLocaleString()}
-                      </span>{' '}
-                      <span className="text-[11px] text-neutral-500">({order.paymentMethod.toUpperCase()})</span>
-                    </div>
-
-                    <button
-                      onClick={() => setSelectedOrderForInvoice(order)}
-                      className="px-3.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#281044] rounded-lg font-bold flex items-center gap-1.5 transition-colors"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>View Invoice Details</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -207,6 +256,27 @@ export const OrderTrackingView: React.FC = () => {
                 ✕
               </button>
             </div>
+
+            {/* Cancelled Banner inside Invoice Modal */}
+            {(selectedOrderForInvoice.orderStatus === 'Cancelled' || selectedOrderForInvoice.orderStatus === 'Archived') && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 space-y-1 text-xs text-red-800">
+                <div className="flex items-center gap-2 font-bold">
+                  <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>Order Status: Cancelled</span>
+                </div>
+                {selectedOrderForInvoice.deletionReason && (
+                  <p className="text-xs text-red-700 font-medium">
+                    <span className="font-bold">Cancellation Reason:</span> {selectedOrderForInvoice.deletionReason}
+                  </p>
+                )}
+                {(selectedOrderForInvoice.updatedAt || selectedOrderForInvoice.archivedAt) && (
+                  <p className="text-[11px] text-red-600">
+                    <span className="font-semibold">Cancelled on:</span>{' '}
+                    {new Date(selectedOrderForInvoice.updatedAt || selectedOrderForInvoice.archivedAt || selectedOrderForInvoice.createdAt).toLocaleString('en-US')}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3 bg-neutral-50 p-3 rounded-lg border">

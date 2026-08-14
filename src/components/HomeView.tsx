@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, ShieldCheck, Truck, Sparkles, HeartHandshake, Star, Award, Phone } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Truck, Sparkles, HeartHandshake, Star, Award, Phone, MessageCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { HeroSlider } from './HeroSlider';
 import { ProductCard } from './ProductCard';
@@ -114,12 +114,12 @@ export const HomeView: React.FC = () => {
 
       {/* Customer Support WhatsApp Quick Banner */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-4 flex items-center justify-center shadow-2xs">
+        <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-3 sm:p-4 flex items-center justify-center shadow-xs">
           <a
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-full shadow-xs transition-transform active:scale-95 text-center"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-sm rounded-xl shadow-xs transition-all duration-200 active:scale-95 text-center"
           >
             <Phone className="w-4 h-4 fill-current" />
             <span>Chat on WhatsApp</span>

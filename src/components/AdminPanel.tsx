@@ -2,14 +2,21 @@ import React, { useState, useEffect } from 'react';
 import {
   Lock, LayoutDashboard, ShoppingCart, Package, Image as ImageIcon,
   Settings, Archive, BarChart3, CheckCircle2, XCircle, Trash2, Edit,
-  Plus, Search, ArrowLeft, RefreshCw, Eye, FolderTree, ArrowUp, ArrowDown, Upload, Tag, Video, Loader2, Sparkles, AlertCircle,
-  Monitor, Smartphone, Printer, X
+  Plus, Search, ArrowLeft, RefreshCw, Eye, EyeOff, KeyRound, ShieldCheck, FolderTree, ArrowUp, ArrowDown, Upload, Tag, Video, Loader2, Sparkles, AlertCircle,
+  Monitor, Smartphone, Printer, X, Menu, ChevronDown
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Order, OrderStatus, Product, HeroBanner, Category } from '../types';
 import { RakoMartLogoIcon } from './RakoMartLogo';
 import { compressImageFile, processFaviconFile } from '../lib/imageUtils';
 import { DEFAULT_FAVICON_URL } from '../lib/faviconUtils';
+import {
+  verifyAdminPassword,
+  completeHandoverWithNewPassword,
+  checkAdminSessionActive,
+  setAdminSessionActive,
+  clearAdminSession,
+} from '../lib/adminAuth';
 
 export const AdminPanel: React.FC = () => {
   const {
@@ -19,10 +26,24 @@ export const AdminPanel: React.FC = () => {
     addCategory, updateCategory, deleteCategory, reorderCategories, isCloudConnected
   } = useStore();
 
-  // Admin Auth Gate
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [adminPin, setAdminPin] = useState('');
+  // Admin Auth Gate & Handover Security State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => checkAdminSessionActive());
+  const [isHandoverSetupPending, setIsHandoverSetupPending] = useState<boolean>(false);
+  const [adminPassword, setAdminPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+
+  // Handover Setup Form State
+  const [newAdminPassword, setNewAdminPassword] = useState<string>('');
+  const [confirmAdminPassword, setConfirmAdminPassword] = useState<string>('');
+  const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [handoverError, setHandoverError] = useState<string | null>(null);
+  const [isSavingHandover, setIsSavingHandover] = useState<boolean>(false);
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'payments' | 'categories' | 'products' | 'banners' | 'archived' | 'settings'>('dashboard');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Search & Filter state
@@ -152,14 +173,83 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  // Authentication Handle
-  const handleLogin = (e: React.FormEvent) => {
+  // Authentication & Handover Handlers
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPin === '1234' || adminPin === 'admin' || adminPin.length >= 4) {
-      setIsAuthenticated(true);
-    } else {
-      showToast('Invalid Admin PIN! (Try 1234 or admin)');
+    if (!adminPassword.trim()) {
+      setLoginError('Please enter your admin password.');
+      return;
     }
+    setIsLoggingIn(true);
+    setLoginError(null);
+    try {
+      const result = await verifyAdminPassword(adminPassword);
+      if (result.success) {
+        if (result.requiresHandoverSetup) {
+          // One-time owner handover: Force immediate permanent password creation
+          setIsHandoverSetupPending(true);
+          setLoginError(null);
+          showToast('Handover access verified. Please set your permanent admin password.');
+        } else {
+          setAdminSessionActive();
+          setIsAuthenticated(true);
+          setAdminPassword('');
+          showToast('Welcome to RakoMart Admin Dashboard');
+        }
+      } else {
+        setLoginError(result.error || 'Invalid admin password. Access denied.');
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setLoginError('Authentication service unavailable. Please try again.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleCompleteHandover = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setHandoverError(null);
+
+    if (newAdminPassword.length < 6) {
+      setHandoverError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (newAdminPassword !== confirmAdminPassword) {
+      setHandoverError('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    setIsSavingHandover(true);
+    try {
+      const res = await completeHandoverWithNewPassword(newAdminPassword);
+      if (res.success) {
+        setAdminSessionActive();
+        setIsHandoverSetupPending(false);
+        setIsAuthenticated(true);
+        setAdminPassword('');
+        setNewAdminPassword('');
+        setConfirmAdminPassword('');
+        showToast('Permanent admin password established. Handover complete!');
+      } else {
+        setHandoverError(res.error || 'Failed to save new password to database.');
+      }
+    } catch (err: any) {
+      console.error('Handover save error:', err);
+      setHandoverError('Could not save permanent password. Please try again.');
+    } finally {
+      setIsSavingHandover(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearAdminSession();
+    setIsAuthenticated(false);
+    setIsHandoverSetupPending(false);
+    setAdminPassword('');
+    setLoginError(null);
+    showToast('Logged out of Admin Panel.');
   };
 
   // Dashboard Stats Calculations with null-safety
@@ -229,29 +319,199 @@ export const AdminPanel: React.FC = () => {
     );
   });
 
-  if (!isAuthenticated) {
+  // SCREEN 1: FORCED FIRST-TIME OWNER HANDOVER PASSWORD CREATION SCREEN
+  if (isHandoverSetupPending) {
     return (
-      <div className="max-w-md mx-auto px-4 py-16">
-        <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-md space-y-4 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-[#281044] text-white flex items-center justify-center mx-auto shadow-sm">
-            <RakoMartLogoIcon className="w-8 h-8 text-white" color="#ffffff" />
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+        <div className="bg-white rounded-3xl border border-purple-200/80 p-6 sm:p-8 shadow-xl max-w-md w-full space-y-6">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#281044] to-[#491b7d] text-white flex items-center justify-center mx-auto shadow-md relative">
+              <KeyRound className="w-8 h-8 text-purple-200" />
+              <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-amber-950 p-1 rounded-full shadow-xs">
+                <ShieldCheck className="w-4 h-4" />
+              </span>
+            </div>
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-900 font-extrabold text-[11px] uppercase tracking-wider">
+                Store Owner Handover
+              </span>
+              <h2 className="text-xl font-extrabold text-[#281044] mt-2">
+                Create Your Permanent Password
+              </h2>
+              <p className="text-xs text-neutral-600 leading-relaxed mt-1">
+                You have authenticated using the one-time temporary handover password. To secure your store and complete the official handover, create your private admin password below.
+              </p>
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-[#281044]">RakoMart Admin Panel</h2>
-          <form onSubmit={handleLogin} className="space-y-3">
-            <input
-              type="password"
-              placeholder="Enter Admin PIN"
-              value={adminPin}
-              onChange={(e) => setAdminPin(e.target.value)}
-              className="w-full px-3.5 py-2.5 border rounded-xl text-center font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#281044]"
-            />
+
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="leading-snug">
+              <strong className="font-bold block">Security Notice:</strong>
+              Once saved, the temporary handover password is permanently invalidated and the previous administrator/developer will no longer have access.
+            </p>
+          </div>
+
+          {handoverError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{handoverError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleCompleteHandover} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">
+                New Admin Password (Min. 6 Characters)
+              </label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Enter new private password"
+                  value={newAdminPassword}
+                  onChange={(e) => setNewAdminPassword(e.target.value)}
+                  className="w-full pl-3.5 pr-10 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#281044] focus:bg-white transition-all font-sans"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 transition-colors"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Re-type new password"
+                  value={confirmAdminPassword}
+                  onChange={(e) => setConfirmAdminPassword(e.target.value)}
+                  className="w-full pl-3.5 pr-10 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#281044] focus:bg-white transition-all font-sans"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
             <button
               type="submit"
-              className="w-full bg-[#281044] text-white font-bold py-2.5 rounded-xl text-xs"
+              disabled={isSavingHandover}
+              className="w-full bg-[#281044] hover:bg-[#3d1a66] active:scale-[0.99] text-white font-extrabold py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50"
             >
-              Login
+              {isSavingHandover ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Securing Account & Finalizing Handover...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Save Password & Complete Handover</span>
+                </>
+              )}
             </button>
           </form>
+        </div>
+      </div>
+    );
+  }
+
+  // SCREEN 2: PROFESSIONAL ADMIN PORTAL LOGIN
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center px-4 py-12">
+        <div className="bg-white rounded-3xl border border-neutral-200 p-6 sm:p-8 shadow-xl max-w-md w-full space-y-6">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-[#281044] text-white flex items-center justify-center mx-auto shadow-md">
+              <RakoMartLogoIcon className="w-10 h-10 text-white" color="#ffffff" />
+            </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-[#281044]">
+                RakoMart Administration Portal
+              </h2>
+              <p className="text-xs text-neutral-500 mt-1">
+                Authorized management access for store operations
+              </p>
+            </div>
+          </div>
+
+          {loginError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{loginError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">
+                Admin Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoFocus
+                  placeholder="Enter your admin password"
+                  value={adminPassword}
+                  onChange={(e) => {
+                    setAdminPassword(e.target.value);
+                    if (loginError) setLoginError(null);
+                  }}
+                  className="w-full pl-3.5 pr-10 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#281044] focus:bg-white transition-all font-sans"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full bg-[#281044] hover:bg-[#3d1a66] active:scale-[0.99] text-white font-extrabold py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Verifying Credentials...</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Sign In to Dashboard</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="pt-2 border-t border-neutral-100 text-center">
+            <button
+              type="button"
+              onClick={() => navigateTo('home')}
+              className="text-xs font-semibold text-neutral-500 hover:text-[#281044] transition-colors inline-flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Storefront</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -419,7 +679,7 @@ export const AdminPanel: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6 overflow-x-hidden">
       {/* Admin Top Navigation */}
       <div className="bg-[#281044] text-white rounded-2xl p-4 sm:p-6 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -452,97 +712,148 @@ export const AdminPanel: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => navigateTo('home')}
-          className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 w-fit transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Go to Storefront</span>
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={handleLogout}
+            className="bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-400/30 text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Log out of Admin Panel"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span>Logout</span>
+          </button>
+          <button
+            onClick={() => navigateTo('home')}
+            className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 w-fit transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Go to Storefront</span>
+          </button>
+        </div>
       </div>
 
       {/* Admin Navigation Tabs Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-neutral-200 text-xs font-bold">
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all ${
-            activeTab === 'dashboard' ? 'bg-[#281044] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
-          }`}
-        >
-          <LayoutDashboard className="w-4 h-4" />
-          <span>Overview</span>
-        </button>
+      {(() => {
+        const navTabs = [
+          { id: 'dashboard' as const, label: 'Overview', icon: LayoutDashboard, count: null },
+          { id: 'orders' as const, label: 'Orders', icon: ShoppingCart, count: orders.length },
+          { id: 'payments' as const, label: 'Payment Verification', icon: BarChart3, count: pendingPaymentsCount },
+          { id: 'categories' as const, label: 'Category Management', icon: FolderTree, count: categories.length },
+          { id: 'products' as const, label: 'Product Catalog', icon: Package, count: products.length },
+          { id: 'banners' as const, label: 'Hero Cover Banners', icon: ImageIcon, count: banners.length },
+          { id: 'archived' as const, label: 'Archived History', icon: Archive, count: archivedOrders.length },
+          { id: 'settings' as const, label: 'Store Settings', icon: Settings, count: null },
+        ];
+        const currentActive = navTabs.find((t) => t.id === activeTab) || navTabs[0];
+        const ActiveIcon = currentActive.icon;
 
-        <button
-          onClick={() => setActiveTab('orders')}
-          className={`px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all ${
-            activeTab === 'orders' ? 'bg-[#281044] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
-          }`}
-        >
-          <ShoppingCart className="w-4 h-4" />
-          <span>Orders ({orders.length})</span>
-        </button>
+        return (
+          <>
+            {/* Mobile View: Clean Hamburger Dropdown Menu (md:hidden) */}
+            <div className="md:hidden space-y-2">
+              <div className="bg-white rounded-2xl border border-neutral-200 p-2.5 shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-[#281044] text-white flex items-center justify-center shrink-0">
+                    <ActiveIcon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] text-neutral-400 font-bold block uppercase tracking-wider">Active Tab</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-neutral-900 truncate">
+                        {currentActive.label}
+                      </span>
+                      {currentActive.count !== null && (
+                        <span className="text-[10px] bg-purple-100 text-purple-900 px-1.5 py-0.2 rounded-full font-bold">
+                          {currentActive.count}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-        <button
-          onClick={() => setActiveTab('payments')}
-          className={`px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all ${
-            activeTab === 'payments' ? 'bg-[#281044] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>Payment Verification ({pendingPaymentsCount})</span>
-        </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-xl text-xs font-bold transition-colors shrink-0"
+                  aria-expanded={isMobileNavOpen}
+                >
+                  {isMobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                  <span>Menu</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMobileNavOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
 
-        <button
-          onClick={() => setActiveTab('categories')}
-          className={`px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all ${
-            activeTab === 'categories' ? 'bg-[#281044] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
-          }`}
-        >
-          <FolderTree className="w-4 h-4" />
-          <span>Category Management ({categories.length})</span>
-        </button>
+              {/* Collapsible Mobile Options List */}
+              {isMobileNavOpen && (
+                <div className="bg-white rounded-2xl border border-neutral-200 p-2 shadow-lg space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-neutral-100">
+                    Navigation Options
+                  </div>
+                  <div className="grid grid-cols-1 gap-1 pt-1">
+                    {navTabs.map((tab) => {
+                      const IconComponent = tab.icon;
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveTab(tab.id);
+                            setIsMobileNavOpen(false);
+                          }}
+                          className={`w-full px-3.5 py-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
+                            isActive
+                              ? 'bg-[#281044] text-white shadow-xs'
+                              : 'bg-neutral-50/80 text-neutral-700 hover:bg-neutral-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <IconComponent className={`w-4 h-4 ${isActive ? 'text-white' : 'text-neutral-500'}`} />
+                            <span>{tab.label}</span>
+                          </div>
+                          {tab.count !== null && (
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                isActive
+                                  ? 'bg-white/20 text-white'
+                                  : 'bg-neutral-200 text-neutral-700'
+                              }`}
+                            >
+                              {tab.count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
-        <button
-          onClick={() => setActiveTab('products')}
-          className={`px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all ${
-            activeTab === 'products' ? 'bg-[#281044] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
-          }`}
-        >
-          <Package className="w-4 h-4" />
-          <span>Product Catalog ({products.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('banners')}
-          className={`px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all ${
-            activeTab === 'banners' ? 'bg-[#281044] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
-          }`}
-        >
-          <ImageIcon className="w-4 h-4" />
-          <span>Hero Cover Banners ({banners.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('archived')}
-          className={`px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all ${
-            activeTab === 'archived' ? 'bg-[#281044] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
-          }`}
-        >
-          <Archive className="w-4 h-4" />
-          <span>Archived History ({archivedOrders.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all ${
-            activeTab === 'settings' ? 'bg-[#281044] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          <span>Store Settings</span>
-        </button>
-      </div>
+            {/* Desktop View: Full Tab Bar (hidden md:flex) */}
+            <div className="hidden md:flex items-center gap-2 overflow-x-auto pb-2 border-b border-neutral-200 text-xs font-bold">
+              {navTabs.map((tab) => {
+                const IconComponent = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all ${
+                      isActive ? 'bg-[#281044] text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'
+                    }`}
+                  >
+                    <IconComponent className="w-4 h-4" />
+                    <span>
+                      {tab.label}
+                      {tab.count !== null && ` (${tab.count})`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
 
       {/* TAB 1: OVERVIEW DASHBOARD */}
       {activeTab === 'dashboard' && (
@@ -722,140 +1033,257 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Orders Table */}
-          <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-neutral-100 text-neutral-700 font-bold border-b">
+      {/* Orders View */}
+      <div className="space-y-4">
+        {/* Mobile View: Responsive Order Cards (md:hidden) */}
+        <div className="md:hidden space-y-3">
+          {filteredOrders.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-neutral-200 p-6 text-center text-neutral-500 text-xs">
+              No orders found.
+            </div>
+          ) : (
+            filteredOrders.map((order) => (
+              <div
+                key={order.id}
+                className="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3 shadow-xs"
+              >
+                {/* Header: Order ID & Total */}
+                <div className="flex items-center justify-between border-b border-neutral-100 pb-2.5">
+                  <div>
+                    <button
+                      onClick={() => setSelectedOrderForDetails(order)}
+                      className="font-mono font-extrabold text-[#281044] text-xs hover:underline flex items-center gap-1 text-left"
+                    >
+                      <span>#{order.id}</span>
+                      <span className="text-[10px] text-neutral-400 font-normal">
+                        ({order.items?.length || 0} items)
+                      </span>
+                    </button>
+                    <span className="text-[10px] text-neutral-400 block">
+                      {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US') : 'Recent'}
+                    </span>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-sm font-extrabold text-[#281044] block">
+                      ৳{(order.total || 0).toLocaleString()}
+                    </span>
+                    <span className="text-[9px] uppercase font-bold text-neutral-500">
+                      {order.paymentMethod || 'COD'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Customer Details */}
+                <div className="bg-neutral-50 rounded-xl p-2.5 text-[11px] space-y-1 text-neutral-700">
+                  <div className="flex justify-between font-bold text-neutral-900">
+                    <span>{order.customerName || 'Customer'}</span>
+                    <span className="font-mono text-neutral-600">{order.customerMobile || 'N/A'}</span>
+                  </div>
+                  <div className="text-neutral-500 text-[10px] line-clamp-2">
+                    {order.district}{order.upazila ? `, ${order.upazila}` : ''} ({order.address})
+                  </div>
+                  {order.transactionId && (
+                    <div className="pt-1 text-[10px] font-mono text-purple-900 font-bold flex items-center gap-1">
+                      <span>TrxID:</span>
+                      <span className="bg-purple-100 px-1 rounded">{order.transactionId}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Status & Actions */}
+                <div className="flex flex-col gap-2 pt-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-neutral-600">Status:</span>
+                    <select
+                      value={order.orderStatus}
+                      onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
+                      className="bg-neutral-100 border border-neutral-300 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none flex-1 max-w-[200px]"
+                    >
+                      <option value="New Order">New Order</option>
+                      <option value="Payment Processing">Payment Processing</option>
+                      <option value="Processing">Processing</option>
+                      <option value="Packaging">Packaging</option>
+                      <option value="Handed to Courier">Handed to Courier</option>
+                      <option value="In Transit">In Transit</option>
+                      <option value="Delivered">Delivered</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-neutral-100">
+                    {(order.orderStatus === 'New Order' || order.orderStatus === 'Payment Processing') && (
+                      <button
+                        onClick={() => {
+                          updateOrderStatus(order.id, 'Processing');
+                          if (order.paymentMethod !== 'cod' && order.paymentStatus !== 'VERIFIED') {
+                            verifyPayment(order.id, 'VERIFIED');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 shadow-xs"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Accept</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setSelectedOrderForDetails(order)}
+                      className="px-3 py-1.5 bg-purple-50 text-[#281044] hover:bg-purple-100 rounded-lg font-bold text-xs flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Details / Invoice</span>
+                    </button>
+
+                    <button
+                      onClick={() => setArchivingOrderId(order.id)}
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                      title="Archive / Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop View: Full Data Table (hidden md:block) */}
+        <div className="hidden md:block bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-neutral-100 text-neutral-700 font-bold border-b">
+                <tr>
+                  <th className="p-3">Order ID</th>
+                  <th className="p-3">Customer & Mobile</th>
+                  <th className="p-3">Address & Date</th>
+                  <th className="p-3">Total Amount</th>
+                  <th className="p-3">Payment</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200">
+                {filteredOrders.length === 0 ? (
                   <tr>
-                    <th className="p-3">Order ID</th>
-                    <th className="p-3">Customer & Mobile</th>
-                    <th className="p-3">Address & Date</th>
-                    <th className="p-3">Total Amount</th>
-                    <th className="p-3">Payment</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Action</th>
+                    <td colSpan={7} className="p-8 text-center text-neutral-500 font-medium">
+                      No orders found.
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-200">
-                  {filteredOrders.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="p-8 text-center text-neutral-500 font-medium">
-                        No orders found.
+                ) : (
+                  filteredOrders.map((order) => (
+                    <tr key={order.id} className="hover:bg-neutral-50 transition-colors">
+                      <td className="p-3 font-mono font-bold text-[#281044]">
+                        <button
+                          onClick={() => setSelectedOrderForDetails(order)}
+                          className="hover:underline text-left"
+                          title="View Invoice & Order Items"
+                        >
+                          #{order.id}
+                        </button>
+                        <span className="block text-[10px] text-neutral-400 font-normal">
+                          {order.items?.length || 0} items
+                        </span>
                       </td>
-                    </tr>
-                  ) : (
-                    filteredOrders.map((order) => (
-                      <tr key={order.id} className="hover:bg-neutral-50 transition-colors">
-                        <td className="p-3 font-mono font-bold text-[#281044]">
+                      <td className="p-3">
+                        <span className="font-bold text-neutral-900 block">{order.customerName || 'Customer'}</span>
+                        <span className="text-neutral-500 font-mono">{order.customerMobile || 'N/A'}</span>
+                      </td>
+                      <td className="p-3 text-neutral-600 max-w-xs">
+                        <span className="truncate block">
+                          {order.district}{order.upazila ? `, ${order.upazila}` : ''} ({order.address})
+                        </span>
+                        <span className="text-[10px] text-neutral-400 block mt-0.5">
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US') : 'Recent'}
+                        </span>
+                      </td>
+                      <td className="p-3 font-extrabold text-[#281044]">
+                        ৳{(order.total || 0).toLocaleString()}
+                      </td>
+                      <td className="p-3">
+                        <span className="uppercase font-bold block">{order.paymentMethod || 'COD'}</span>
+                        {order.transactionId && (
+                          <span className="font-mono text-[10px] bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded border block w-fit mt-0.5">
+                            {order.transactionId}
+                          </span>
+                        )}
+                        {order.paymentMethod !== 'cod' && (
+                          <span
+                            className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded inline-block mt-0.5 ${
+                              order.paymentStatus === 'VERIFIED'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : order.paymentStatus === 'REJECTED'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {order.paymentStatus || 'PROCESSING'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <select
+                          value={order.orderStatus}
+                          onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
+                          className="bg-neutral-100 border border-neutral-300 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#281044]"
+                        >
+                          <option value="New Order">New Order</option>
+                          <option value="Payment Processing">Payment Processing</option>
+                          <option value="Processing">Processing</option>
+                          <option value="Packaging">Packaging</option>
+                          <option value="Handed to Courier">Handed to Courier</option>
+                          <option value="In Transit">In Transit</option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Quick Accept button for New Orders */}
+                          {(order.orderStatus === 'New Order' || order.orderStatus === 'Payment Processing') && (
+                            <button
+                              onClick={() => {
+                                updateOrderStatus(order.id, 'Processing');
+                                if (order.paymentMethod !== 'cod' && order.paymentStatus !== 'VERIFIED') {
+                                  verifyPayment(order.id, 'VERIFIED');
+                                }
+                              }}
+                              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 shadow-xs transition-colors shrink-0"
+                              title="Accept Order & Move to Processing"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Accept</span>
+                            </button>
+                          )}
+
+                          {/* View Order Details & Invoice Slip */}
                           <button
                             onClick={() => setSelectedOrderForDetails(order)}
-                            className="hover:underline text-left"
-                            title="View Invoice & Order Items"
+                            className="p-1.5 text-[#281044] hover:bg-purple-50 rounded-lg transition-colors"
+                            title="View Order Details & Invoice"
                           >
-                            #{order.id}
+                            <Eye className="w-4 h-4" />
                           </button>
-                          <span className="block text-[10px] text-neutral-400 font-normal">
-                            {order.items?.length || 0} items
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <span className="font-bold text-neutral-900 block">{order.customerName || 'Customer'}</span>
-                          <span className="text-neutral-500 font-mono">{order.customerMobile || 'N/A'}</span>
-                        </td>
-                        <td className="p-3 text-neutral-600 max-w-xs">
-                          <span className="truncate block">
-                            {order.district}{order.upazila ? `, ${order.upazila}` : ''} ({order.address})
-                          </span>
-                          <span className="text-[10px] text-neutral-400 block mt-0.5">
-                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US') : 'Recent'}
-                          </span>
-                        </td>
-                        <td className="p-3 font-extrabold text-[#281044]">
-                          ৳{(order.total || 0).toLocaleString()}
-                        </td>
-                        <td className="p-3">
-                          <span className="uppercase font-bold block">{order.paymentMethod || 'COD'}</span>
-                          {order.transactionId && (
-                            <span className="font-mono text-[10px] bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded border block w-fit mt-0.5">
-                              {order.transactionId}
-                            </span>
-                          )}
-                          {order.paymentMethod !== 'cod' && (
-                            <span
-                              className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded inline-block mt-0.5 ${
-                                order.paymentStatus === 'VERIFIED'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : order.paymentStatus === 'REJECTED'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}
-                            >
-                              {order.paymentStatus || 'PROCESSING'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <select
-                            value={order.orderStatus}
-                            onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
-                            className="bg-neutral-100 border border-neutral-300 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#281044]"
+
+                          {/* Archive & Delete Order */}
+                          <button
+                            onClick={() => setArchivingOrderId(order.id)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Archive & Delete Order"
                           >
-                            <option value="New Order">New Order</option>
-                            <option value="Payment Processing">Payment Processing</option>
-                            <option value="Processing">Processing</option>
-                            <option value="Packaging">Packaging</option>
-                            <option value="Handed to Courier">Handed to Courier</option>
-                            <option value="In Transit">In Transit</option>
-                            <option value="Delivered">Delivered</option>
-                            <option value="Cancelled">Cancelled</option>
-                          </select>
-                        </td>
-                        <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {/* Quick Accept button for New Orders */}
-                            {(order.orderStatus === 'New Order' || order.orderStatus === 'Payment Processing') && (
-                              <button
-                                onClick={() => {
-                                  updateOrderStatus(order.id, 'Processing');
-                                  if (order.paymentMethod !== 'cod' && order.paymentStatus !== 'VERIFIED') {
-                                    verifyPayment(order.id, 'VERIFIED');
-                                  }
-                                }}
-                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 shadow-xs transition-colors shrink-0"
-                                title="Accept Order & Move to Processing"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Accept</span>
-                              </button>
-                            )}
-
-                            {/* View Order Details & Invoice Slip */}
-                            <button
-                              onClick={() => setSelectedOrderForDetails(order)}
-                              className="p-1.5 text-[#281044] hover:bg-purple-50 rounded-lg transition-colors"
-                              title="View Order Details & Invoice"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-
-                            {/* Archive & Delete Order */}
-                            <button
-                              onClick={() => setArchivingOrderId(order.id)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Archive & Delete Order"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
+        </div>
+      </div>
         </div>
       )}
 
@@ -951,7 +1379,120 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-xs">
+          {/* Mobile View: Category Cards (md:hidden) */}
+          <div className="md:hidden space-y-3">
+            {categories
+              .filter((c) =>
+                categorySearchQuery.trim()
+                  ? c.name.toLowerCase().includes(categorySearchQuery.toLowerCase()) ||
+                    c.slug.toLowerCase().includes(categorySearchQuery.toLowerCase())
+                  : true
+              )
+              .sort((a, b) => (a.order || 0) - (b.order || 0))
+              .map((cat, idx, arr) => {
+                const prodCount = products.filter((p) => {
+                  const pCat = p.category.toLowerCase();
+                  const cCat = cat.id.toLowerCase();
+                  const cSlug = cat.slug.toLowerCase();
+                  const cName = cat.name.toLowerCase();
+                  return pCat === cCat || pCat === cSlug || pCat === cName;
+                }).length;
+
+                return (
+                  <div
+                    key={cat.id || cat.slug}
+                    className="bg-white p-3.5 rounded-2xl border border-neutral-200 space-y-3 shadow-xs"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Image */}
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
+                        {cat.image ? (
+                          <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <FolderTree className="w-6 h-6 text-purple-400" />
+                        )}
+                      </div>
+
+                      {/* Name & Route */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-xs text-neutral-900 truncate">{cat.name}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 shrink-0">
+                            {prodCount} prods
+                          </span>
+                        </div>
+                        {cat.nameBn && <span className="text-[10px] text-neutral-500 block truncate">{cat.nameBn}</span>}
+                        <span className="font-mono text-[10px] text-purple-900 font-medium block truncate">
+                          /category/{cat.slug || cat.id}
+                        </span>
+                      </div>
+
+                      {/* Order Controls */}
+                      <div className="flex flex-col items-center justify-center gap-1 shrink-0 bg-neutral-50 p-1 rounded-lg border border-neutral-100">
+                        <button
+                          disabled={idx === 0}
+                          onClick={() => handleMoveCategory(idx, 'up')}
+                          className="p-1 rounded hover:bg-neutral-200 disabled:opacity-20"
+                          title="Move Up"
+                        >
+                          <ArrowUp className="w-3 h-3 text-neutral-600" />
+                        </button>
+                        <span className="font-bold text-[10px] text-neutral-700">{cat.order || idx + 1}</span>
+                        <button
+                          disabled={idx === arr.length - 1}
+                          onClick={() => handleMoveCategory(idx, 'down')}
+                          className="p-1 rounded hover:bg-neutral-200 disabled:opacity-20"
+                          title="Move Down"
+                        >
+                          <ArrowDown className="w-3 h-3 text-neutral-600" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions */}
+                    <div className="flex items-center justify-between pt-2 border-t border-neutral-100 text-xs">
+                      <button
+                        onClick={() =>
+                          updateCategory({
+                            ...cat,
+                            isActive: cat.isActive === false ? true : false,
+                          })
+                        }
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
+                          cat.isActive !== false
+                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                            : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300'
+                        }`}
+                      >
+                        {cat.isActive !== false ? 'Active' : 'Disabled'}
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenEditCategory(cat)}
+                          className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-bold text-xs flex items-center gap-1"
+                        >
+                          <Edit className="w-3 h-3" /> Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to delete category "${cat.name}"?`)) {
+                              deleteCategory(cat.id || cat.slug);
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg font-bold text-xs flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          {/* Desktop View: Full Table (hidden md:block) */}
+          <div className="hidden md:block bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-neutral-100 font-bold text-neutral-700 border-b">
@@ -1288,35 +1829,63 @@ export const AdminPanel: React.FC = () => {
             />
           </div>
 
-          <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-neutral-100 font-bold border-b">
-                <tr>
-                  <th className="p-3">Order ID</th>
-                  <th className="p-3">Customer & Mobile</th>
-                  <th className="p-3">Total Amount</th>
-                  <th className="p-3">Reason for Deletion</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filteredArchived.length === 0 ? (
+          {/* Mobile View: Archived Cards (md:hidden) */}
+          <div className="md:hidden space-y-3">
+            {filteredArchived.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6 text-center text-neutral-500 text-xs">
+                No deleted or archived order history found.
+              </div>
+            ) : (
+              filteredArchived.map((o) => (
+                <div key={o.id} className="bg-white p-3.5 rounded-2xl border border-neutral-200 space-y-2 text-xs shadow-xs">
+                  <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+                    <span className="font-mono font-bold text-[#281044]">#{o.id}</span>
+                    <span className="font-extrabold text-[#281044]">৳{o.total}</span>
+                  </div>
+                  <div className="text-neutral-700">
+                    <span className="font-bold">{o.customerName}</span>{' '}
+                    <span className="text-neutral-500 font-mono">({o.customerMobile})</span>
+                  </div>
+                  <div className="bg-red-50 text-red-700 p-2 rounded-lg text-[11px] font-medium border border-red-100">
+                    <strong>Reason:</strong> {o.deletionReason || 'N/A'}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop View: Archived Table (hidden md:block) */}
+          <div className="hidden md:block bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-neutral-100 font-bold border-b">
                   <tr>
-                    <td colSpan={4} className="p-6 text-center text-neutral-500">
-                      No deleted or archived order history found.
-                    </td>
+                    <th className="p-3">Order ID</th>
+                    <th className="p-3">Customer & Mobile</th>
+                    <th className="p-3">Total Amount</th>
+                    <th className="p-3">Reason for Deletion</th>
                   </tr>
-                ) : (
-                  filteredArchived.map((o) => (
-                    <tr key={o.id}>
-                      <td className="p-3 font-mono font-bold">#{o.id}</td>
-                      <td className="p-3">{o.customerName} ({o.customerMobile})</td>
-                      <td className="p-3 font-bold">৳{o.total}</td>
-                      <td className="p-3 text-red-700 font-medium bg-red-50/50">{o.deletionReason || 'N/A'}</td>
+                </thead>
+                <tbody className="divide-y">
+                  {filteredArchived.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-6 text-center text-neutral-500">
+                        No deleted or archived order history found.
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredArchived.map((o) => (
+                      <tr key={o.id}>
+                        <td className="p-3 font-mono font-bold">#{o.id}</td>
+                        <td className="p-3">{o.customerName} ({o.customerMobile})</td>
+                        <td className="p-3 font-bold">৳{o.total}</td>
+                        <td className="p-3 text-red-700 font-medium bg-red-50/50">{o.deletionReason || 'N/A'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1679,7 +2248,7 @@ export const AdminPanel: React.FC = () => {
       {archivingOrderId && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-2xl max-w-md w-full space-y-4">
-            <h3 className="font-bold text-sm text-[#281044]">Select Reason for Deleting Order</h3>
+            <h3 className="font-bold text-sm text-[#281044]">Select Reason for Cancelling Order</h3>
             <select
               value={archiveReason}
               onChange={(e) => setArchiveReason(e.target.value)}
@@ -1689,7 +2258,8 @@ export const AdminPanel: React.FC = () => {
               <option value="Invalid address">Invalid address</option>
               <option value="Invalid payment">Invalid payment or fake transaction</option>
               <option value="Duplicate order">Duplicate order</option>
-              <option value="Customer cancelled">Customer cancelled</option>
+              <option value="Customer requested cancellation">Customer requested cancellation</option>
+              <option value="Out of stock">Out of stock</option>
               <option value="Other">Other</option>
             </select>
             <div className="flex justify-end gap-2">
@@ -1706,7 +2276,7 @@ export const AdminPanel: React.FC = () => {
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold"
               >
-                Confirm Delete
+                Confirm Cancel
               </button>
             </div>
           </div>
@@ -2528,42 +3098,44 @@ export const AdminPanel: React.FC = () => {
             <div className="space-y-3">
               <h4 className="font-bold text-neutral-900 text-sm">Ordered Products ({selectedOrderForDetails.items?.length || 0})</h4>
               <div className="border border-neutral-200 rounded-xl overflow-hidden">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-neutral-100 font-bold text-neutral-700 border-b">
-                    <tr>
-                      <th className="p-3">Product</th>
-                      <th className="p-3 text-center">Qty</th>
-                      <th className="p-3 text-right">Unit Price</th>
-                      <th className="p-3 text-right">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-200">
-                    {selectedOrderForDetails.items?.map((item, idx) => {
-                      const itemTitle = item.product?.title || (item.product as any)?.name || 'Item';
-                      const itemPrice = Number(item.product?.price) || 0;
-                      const itemQty = Number(item.quantity) || 1;
-                      const itemImg = item.product?.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100';
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left min-w-[320px]">
+                    <thead className="bg-neutral-100 font-bold text-neutral-700 border-b">
+                      <tr>
+                        <th className="p-3">Product</th>
+                        <th className="p-3 text-center">Qty</th>
+                        <th className="p-3 text-right">Unit Price</th>
+                        <th className="p-3 text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200">
+                      {selectedOrderForDetails.items?.map((item, idx) => {
+                        const itemTitle = item.product?.title || (item.product as any)?.name || 'Item';
+                        const itemPrice = Number(item.product?.price) || 0;
+                        const itemQty = Number(item.quantity) || 1;
+                        const itemImg = item.product?.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100';
 
-                      return (
-                        <tr key={idx} className="hover:bg-neutral-50">
-                          <td className="p-3 flex items-center gap-2.5">
-                            <img
-                              src={itemImg}
-                              alt={itemTitle}
-                              className="w-9 h-9 object-cover rounded-lg border"
-                            />
-                            <span className="font-bold text-neutral-800">{itemTitle}</span>
-                          </td>
-                          <td className="p-3 text-center font-bold font-mono">{itemQty}</td>
-                          <td className="p-3 text-right text-neutral-600">৳{itemPrice.toLocaleString()}</td>
-                          <td className="p-3 text-right font-extrabold text-neutral-900">
-                            ৳{(itemPrice * itemQty).toLocaleString()}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                        return (
+                          <tr key={idx} className="hover:bg-neutral-50">
+                            <td className="p-3 flex items-center gap-2.5 min-w-[140px]">
+                              <img
+                                src={itemImg}
+                                alt={itemTitle}
+                                className="w-9 h-9 object-cover rounded-lg border shrink-0"
+                              />
+                              <span className="font-bold text-neutral-800 line-clamp-2">{itemTitle}</span>
+                            </td>
+                            <td className="p-3 text-center font-bold font-mono">{itemQty}</td>
+                            <td className="p-3 text-right text-neutral-600">৳{itemPrice.toLocaleString()}</td>
+                            <td className="p-3 text-right font-extrabold text-neutral-900">
+                              ৳{(itemPrice * itemQty).toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
