@@ -5,7 +5,14 @@ import { useStore } from '../context/StoreContext';
 export const CustomerSupportView: React.FC = () => {
   const { settings, navigateTo } = useStore();
 
-  const whatsappPhone = settings.customerCarePhone.replace(/\D/g, '');
+  let rawPhone = settings.customerCarePhone || '8801410425948';
+  let whatsappPhone = rawPhone.replace(/\D/g, '');
+  if (whatsappPhone.startsWith('0')) {
+    whatsappPhone = '88' + whatsappPhone;
+  } else if (!whatsappPhone.startsWith('88') && whatsappPhone.length === 10) {
+    whatsappPhone = '880' + whatsappPhone;
+  }
+  const displayPhone = settings.customerCarePhone || '01410425948';
   const whatsappUrl = `https://wa.me/${whatsappPhone}`;
 
   return (
@@ -40,12 +47,12 @@ export const CustomerSupportView: React.FC = () => {
           </p>
 
           <a
-            href="https://wa.me/8801756425948"
+            href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.99]"
           >
-            <span>Chat on WhatsApp (01756425948)</span>
+            <span>Chat on WhatsApp ({displayPhone})</span>
             <ArrowRight className="w-4 h-4" />
           </a>
         </div>

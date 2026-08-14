@@ -8,7 +8,7 @@ interface HeroSliderProps {
 }
 
 export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) => {
-  const { banners, navigateTo, settings } = useStore();
+  const { banners, navigateTo, settings, isInitialLoading } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [desktopVideoError, setDesktopVideoError] = useState(false);
@@ -198,9 +198,21 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
   };
 
   // -------------------------------------------------------------------------------------------------
-  // EMPTY STATE FALLBACK (When no custom active banners are configured)
+  // EMPTY STATE / LOADING STATE (When banners are loading or none configured)
   // -------------------------------------------------------------------------------------------------
   if (activeBanners.length === 0) {
+    if (isInitialLoading) {
+      if (position === 'hero2') return null;
+      return (
+        <section className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 my-4 sm:my-6">
+          <div className="relative w-full rounded-2xl overflow-hidden shadow-xs border border-purple-900/10 bg-gradient-to-r from-[#281044] via-[#38155e] to-[#281044] animate-pulse">
+            <div className="hidden md:block w-full" style={{ paddingBottom: '38%' }}></div>
+            <div className="block md:hidden w-full" style={{ paddingBottom: '90%' }}></div>
+          </div>
+        </section>
+      );
+    }
+
     if (position === 'hero2') {
       return (
         <section className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -316,42 +328,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
       );
     }
 
-    return (
-      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 my-4 sm:my-6">
-        <div
-          onClick={() => navigateTo('products')}
-          className="relative min-h-[220px] sm:min-h-[340px] lg:min-h-[440px] w-full rounded-2xl overflow-hidden shadow-lg bg-[#281044] border border-purple-900/40 cursor-pointer group flex flex-col justify-between p-6 sm:p-10 lg:p-12 select-none"
-        >
-          <div className="absolute inset-0 bg-radial from-purple-800/20 via-transparent to-transparent opacity-60 pointer-events-none" />
-
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div
-              className="text-white text-center leading-[0.88] uppercase font-bold tracking-normal animate-pulse duration-[3000ms]"
-              style={{
-                fontFamily: "'Mali', 'Sniglet', 'Fredoka', cursive",
-                fontSize: 'clamp(3.5rem, 12vw, 9.5rem)',
-              }}
-            >
-              <div className="block drop-shadow-md">RAKO</div>
-              <div className="block drop-shadow-md">MART</div>
-            </div>
-          </div>
-
-          <div className="relative z-10 flex items-end justify-between w-full mt-auto pt-8">
-            <div className="text-white/90 text-[10px] sm:text-xs md:text-sm font-semibold tracking-wider uppercase leading-tight font-sans">
-              <div>CHOOSE BETTER</div>
-              <div>CHOOSE RAKOMART</div>
-            </div>
-
-            <div className="text-white/90 text-[10px] sm:text-xs md:text-sm font-semibold tracking-wider uppercase leading-tight text-right font-sans">
-              <div>UNCOMPROMISED</div>
-              <div>QUALITY,</div>
-              <div>EVERYDAY</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    // When no hero1 banner exists, return null cleanly without flashing purple dummy text
+    return null;
   }
 
   const desktopRatio = desktopMediaSrc ? aspectRatios[desktopMediaSrc] : null;

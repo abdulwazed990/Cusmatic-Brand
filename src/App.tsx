@@ -12,13 +12,18 @@ import { OrderTrackingView } from './components/OrderTrackingView';
 import { CustomerSupportView } from './components/CustomerSupportView';
 import { InformationalPages } from './components/InformationalPages';
 import { AdminPanel } from './components/AdminPanel';
+import { InitialLoadingScreen } from './components/InitialLoadingScreen';
 import { useFavicon } from './lib/faviconUtils';
 
 const MainLayout: React.FC = () => {
-  const { currentView, toastMessage, settings } = useStore();
+  const { currentView, toastMessage, settings, isInitialLoading } = useStore();
 
   // Dynamically synchronize document head favicon with Cloud Firestore settings
   useFavicon(settings.faviconUrl, settings.faviconUpdatedAt);
+
+  if (isInitialLoading) {
+    return <InitialLoadingScreen />;
+  }
 
   const renderView = () => {
     switch (currentView) {
@@ -37,6 +42,7 @@ const MainLayout: React.FC = () => {
       case 'support':
         return <CustomerSupportView />;
       case 'info':
+      case 'info_page':
         return <InformationalPages />;
       case 'admin':
         return <AdminPanel />;

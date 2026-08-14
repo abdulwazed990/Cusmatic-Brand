@@ -1,12 +1,19 @@
 import { useEffect } from 'react';
 
 export const DEFAULT_FAVICON_URL = '/rakomart-official-logo.jpg';
+export const FIXED_SEO_TITLE = 'RakoMart - Choose Better, Choose RakoMart';
+export const FIXED_SEO_DESCRIPTION = "At RakoMart, we don't just sell products — we curate better choices for your lifestyle. From daily essentials to authentic skincare, we are committed to superior quality and a seamless shopping experience.";
 
 /**
  * Dynamically updates the HTML head favicon links
- * with cache-busting version parameter.
+ * with cache-busting version parameter and ensures fixed SEO title is maintained.
  */
 export function updateDOMFavicon(faviconUrl?: string, faviconUpdatedAt?: number) {
+  // Ensure the fixed production title is always maintained
+  if (typeof document !== 'undefined' && document.title !== FIXED_SEO_TITLE) {
+    document.title = FIXED_SEO_TITLE;
+  }
+
   const urlToUse = faviconUrl && faviconUrl.trim() !== '' ? faviconUrl : DEFAULT_FAVICON_URL;
   const v = faviconUpdatedAt || 1;
   const isDataUrl = urlToUse.startsWith('data:');
@@ -40,7 +47,7 @@ export function updateDOMFavicon(faviconUrl?: string, faviconUpdatedAt?: number)
   }
   linkShortcut.href = finalHref;
 
-  // 3. Apple Touch Icon Link
+  // 3. Apple Touch Icon Link (Used by Google mobile and Apple devices as site icon)
   let linkApple = document.getElementById('app-apple-touch-icon') as HTMLLinkElement | null;
   if (!linkApple) {
     linkApple = document.createElement('link');

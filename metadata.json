@@ -1,6 +1,6 @@
 {
   "name": "RakoMart",
-  "description": "RakoMart — Professional Cosmetics E-commerce Store. Better Living, Delivered.",
+  "description": "At RakoMart, we don't just sell products — we curate better choices for your lifestyle. From daily essentials to authentic skincare, we are committed to superior quality and a seamless shopping experience.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -34,7 +34,13 @@ export const ProductDetails: React.FC = () => {
     navigateTo('checkout');
   };
 
-  const whatsappPhone = settings.customerCarePhone.replace(/\D/g, '');
+  let rawPhone = settings.customerCarePhone || '8801410425948';
+  let whatsappPhone = rawPhone.replace(/\D/g, '');
+  if (whatsappPhone.startsWith('0')) {
+    whatsappPhone = '88' + whatsappPhone;
+  } else if (!whatsappPhone.startsWith('88') && whatsappPhone.length === 10) {
+    whatsappPhone = '880' + whatsappPhone;
+  }
   const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(
     `Hello RakoMart, I would like to inquire about / order this product: ${selectedProduct.title} (ID: ${selectedProduct.id})`
   )}`;

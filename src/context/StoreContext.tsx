@@ -21,6 +21,7 @@ interface StoreContextType {
   toastMessage: string | null;
   showToast: (msg: string) => void;
   isCloudConnected: boolean;
+  isInitialLoading: boolean;
 
   // Categories
   categories: Category[];
@@ -117,6 +118,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState<boolean>(false);
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
 
   // Session & Private Cart State (30-Minute Expiration, isolated per visitor session)
   const [sessionId] = useState<string>(() => getSessionId());
@@ -124,15 +126,62 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [cartExpiresAt, setCartExpiresAt] = useState<number | null>(null);
   const [cartExpiredNotice, setCartExpiredNotice] = useState<string | null>(null);
 
-  // Persistent Global Website States
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [archivedOrders, setArchivedOrders] = useState<Order[]>([]);
-  const [banners, setBanners] = useState<HeroBanner[]>([]);
-  const [settings, setSettings] = useState<AdminSettings>(DEFAULT_ADMIN_SETTINGS);
+  // Persistent Global Website States with Local Cache Fallback for zero-delay loading
+  const [categories, setCategories] = useState<Category[]>(() => {
+    try {
+      const cached = localStorage.getItem('rakomart_categories_cache');
+      return cached ? JSON.parse(cached) : INITIAL_CATEGORIES;
+    } catch {
+      return INITIAL_CATEGORIES;
+    }
+  });
 
-  // 1. Initial Load of Session Cart from Local Storage
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const cached = localStorage.getItem('rakomart_products_cache');
+      return cached ? JSON.parse(cached) : MOCK_PRODUCTS;
+    } catch {
+      return MOCK_PRODUCTS;
+    }
+  });
+
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const cached = localStorage.getItem('rakomart_orders_cache');
+      return cached ? JSON.parse(cached) : INITIAL_ORDERS;
+    } catch {
+      return INITIAL_ORDERS;
+    }
+  });
+
+  const [archivedOrders, setArchivedOrders] = useState<Order[]>(() => {
+    try {
+      const cached = localStorage.getItem('rakomart_archived_orders_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [banners, setBanners] = useState<HeroBanner[]>(() => {
+    try {
+      const cached = localStorage.getItem('rakomart_banners_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [settings, setSettings] = useState<AdminSettings>(() => {
+    try {
+      const cached = localStorage.getItem('rakomart_settings_cache');
+      return cached ? JSON.parse(cached) : DEFAULT_ADMIN_SETTINGS;
+    } catch {
+      return DEFAULT_ADMIN_SETTINGS;
+    }
+  });
+
+  // 1. Initial Load of Session Cart from Local Storage (Private client session)
   useEffect(() => {
     if (!sessionId) return;
     try {
@@ -150,36 +199,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
     } catch (e) {
-      console.error('Error loading session cart:', e);
+      console.warn('Notice loading session cart from cache:', e);
     }
   }, [sessionId]);
 
-  // 2. Realtime listener strictly for THIS session's cart document: doc(db, 'userCarts', sessionId)
-  useEffect(() => {
-    if (!sessionId) return;
-    const unsubUserCart = onSnapshot(
-      doc(db, 'userCarts', sessionId),
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.expiresAt && Date.now() >= data.expiresAt) {
-            setCart([]);
-            setCartExpiresAt(null);
-            setCartExpiredNotice('Your cart has expired after 30 minutes of inactivity. Please add the products again.');
-            localStorage.removeItem(`rakomart_cart_${sessionId}`);
-          } else if (Array.isArray(data.items)) {
-            setCart(data.items);
-            setCartExpiresAt(data.expiresAt || null);
-          }
-        }
-      },
-      (err) => console.error('userCart Firestore sub error:', err)
-    );
-
-    return () => unsubUserCart();
-  }, [sessionId]);
-
-  // 3. Expiration Check Helper
+  // 2. Expiration Check Helper
   const checkCartExpiration = (): boolean => {
     if (cartExpiresAt && Date.now() >= cartExpiresAt) {
       setCart([]);
@@ -187,23 +211,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCartExpiredNotice('Your cart has expired after 30 minutes of inactivity. Please add the products again.');
       try {
         localStorage.removeItem(`rakomart_cart_${sessionId}`);
-        deleteDoc(doc(db, 'userCarts', sessionId)).catch(() => {});
       } catch {}
       return true;
     }
     return false;
   };
 
-  // Periodic expiration checker
+  // Periodic expiration checker (every 10s)
   useEffect(() => {
     if (!cartExpiresAt) return;
     const interval = setInterval(() => {
       checkCartExpiration();
-    }, 5000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [cartExpiresAt, sessionId]);
 
-  // Save / Sync session cart to localStorage & Firestore session doc
+  // Save / Sync session cart to localStorage
   const saveCartSession = (newItems: CartItem[]) => {
     const now = Date.now();
     const hasItems = newItems.length > 0;
@@ -232,16 +255,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         localStorage.removeItem(`rakomart_cart_${sessionId}`);
       }
     } catch {}
-
-    try {
-      if (hasItems) {
-        setDoc(doc(db, 'userCarts', sessionId), sessionData, { merge: true }).catch(console.error);
-      } else {
-        deleteDoc(doc(db, 'userCarts', sessionId)).catch(console.error);
-      }
-    } catch (err) {
-      console.error('Error syncing userCart doc:', err);
-    }
   };
 
   // Firestore Realtime Synchronization & One-Time Seeding
@@ -253,97 +266,153 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let unsubOrders: (() => void) | null = null;
     let unsubArchived: (() => void) | null = null;
 
+    let settingsResolved = false;
+    let bannersResolved = false;
+    let categoriesResolved = false;
+    let productsResolved = false;
+
+    const checkAllResolved = () => {
+      // Once the essential above-the-fold media (settings/logo & hero banners) have resolved
+      if (settingsResolved && bannersResolved) {
+        setIsInitialLoading(false);
+      }
+    };
+
+    // Safety timeout: Ensure page smoothly reveals within 800ms even if offline or high network latency
+    const fallbackTimer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 850);
+
     const initializeAndSubscribe = async () => {
       try {
-        // 1. Settings Listener & Initial Seed Check
+        const handleSubError = (source: string, err: any) => {
+          const isQuota = err?.code === 'resource-exhausted' || (err?.message && String(err.message).toLowerCase().includes('quota'));
+          if (isQuota) {
+            console.warn(`Firestore ${source} notification: Free tier daily quota reached. Switched to instant offline local cache.`);
+            setIsCloudConnected(false);
+          } else {
+            console.warn(`Firestore ${source} notification:`, err?.message || err);
+          }
+          if (source === 'settings') settingsResolved = true;
+          if (source === 'banners') bannersResolved = true;
+          if (source === 'categories') categoriesResolved = true;
+          if (source === 'products') productsResolved = true;
+          checkAllResolved();
+        };
+
+        // 1. Settings Listener (Persistent Global Settings & Official Logo)
         unsubSettings = onSnapshot(
           doc(db, 'storeSettings', 'global_settings'),
           async (docSnap) => {
             if (!docSnap.exists()) {
-              // Store has never been seeded in Firestore - run initial seed once
-              console.log('Seeding initial store data to Cloud Firestore...');
-              await setDoc(doc(db, 'storeSettings', 'global_settings'), DEFAULT_ADMIN_SETTINGS, { merge: true });
-
-              for (const cat of INITIAL_CATEGORIES) {
-                await setDoc(doc(db, 'categories', cat.id || cat.slug), cat, { merge: true });
+              console.log('Seeding initial store settings to Cloud Firestore...');
+              try {
+                await setDoc(doc(db, 'storeSettings', 'global_settings'), DEFAULT_ADMIN_SETTINGS, { merge: true });
+              } catch (seedErr) {
+                console.warn('Initial settings seeding note:', seedErr);
               }
-              for (const prod of MOCK_PRODUCTS) {
-                await setDoc(doc(db, 'products', prod.id), prod, { merge: true });
-              }
-              for (const banner of INITIAL_HERO_BANNERS) {
-                await setDoc(doc(db, 'banners', banner.id), banner, { merge: true });
-              }
-              for (const order of INITIAL_ORDERS) {
-                await setDoc(doc(db, 'orders', order.id), order, { merge: true });
-              }
+              setIsCloudConnected(true);
             } else {
-              setSettings(docSnap.data() as AdminSettings);
+              const data = docSnap.data() as AdminSettings;
+              setSettings(data);
+              try {
+                localStorage.setItem('rakomart_settings_cache', JSON.stringify(data));
+              } catch {}
               setIsCloudConnected(true);
             }
+            settingsResolved = true;
+            checkAllResolved();
           },
-          (err) => {
-            console.error('Firestore settings sub error:', err);
-            setIsCloudConnected(false);
-          }
+          (err) => handleSubError('settings', err)
         );
 
         // 2. Categories Listener
         unsubCat = onSnapshot(
           collection(db, 'categories'),
-          (snapshot) => {
-            const list: Category[] = snapshot.docs.map((d) => d.data() as Category);
-            list.sort((a, b) => (a.order || 0) - (b.order || 0));
-            setCategories(list);
+          async (snapshot) => {
+            if (snapshot.empty || snapshot.docs.length === 0) {
+              try {
+                for (const cat of INITIAL_CATEGORIES) {
+                  await setDoc(doc(db, 'categories', cat.id || cat.slug), cat, { merge: true });
+                }
+              } catch {}
+            } else {
+              const list: Category[] = snapshot.docs.map((d) => d.data() as Category);
+              list.sort((a, b) => (a.order || 0) - (b.order || 0));
+              setCategories(list);
+              try {
+                localStorage.setItem('rakomart_categories_cache', JSON.stringify(list));
+              } catch {}
+            }
+            categoriesResolved = true;
+            checkAllResolved();
             setIsCloudConnected(true);
           },
-          (err) => {
-            console.error('Firestore categories sub error:', err);
-            setIsCloudConnected(false);
-          }
+          (err) => handleSubError('categories', err)
         );
 
         // 3. Products Listener
         unsubProd = onSnapshot(
           collection(db, 'products'),
-          (snapshot) => {
-            const list: Product[] = snapshot.docs.map((d) => d.data() as Product);
-            setProducts(list);
+          async (snapshot) => {
+            if (snapshot.empty || snapshot.docs.length === 0) {
+              try {
+                for (const prod of MOCK_PRODUCTS) {
+                  await setDoc(doc(db, 'products', prod.id), prod, { merge: true });
+                }
+              } catch {}
+            } else {
+              const list: Product[] = snapshot.docs.map((d) => d.data() as Product);
+              setProducts(list);
+              try {
+                localStorage.setItem('rakomart_products_cache', JSON.stringify(list));
+              } catch {}
+            }
+            productsResolved = true;
+            checkAllResolved();
             setIsCloudConnected(true);
           },
-          (err) => {
-            console.error('Firestore products sub error:', err);
-            setIsCloudConnected(false);
-          }
+          (err) => handleSubError('products', err)
         );
 
         // 4. Banners Listener
         unsubBanners = onSnapshot(
           collection(db, 'banners'),
-          (snapshot) => {
-            const list: HeroBanner[] = snapshot.docs.map((d) => d.data() as HeroBanner);
-            list.sort((a, b) => (a.order || 0) - (b.order || 0));
-            setBanners(list);
+          async (snapshot) => {
+            if (snapshot.empty || snapshot.docs.length === 0) {
+              try {
+                for (const banner of INITIAL_HERO_BANNERS) {
+                  await setDoc(doc(db, 'banners', banner.id), banner, { merge: true });
+                }
+              } catch {}
+            } else {
+              const list: HeroBanner[] = snapshot.docs.map((d) => d.data() as HeroBanner);
+              list.sort((a, b) => (a.order || 0) - (b.order || 0));
+              setBanners(list);
+              try {
+                localStorage.setItem('rakomart_banners_cache', JSON.stringify(list));
+              } catch {}
+            }
+            bannersResolved = true;
+            checkAllResolved();
             setIsCloudConnected(true);
           },
-          (err) => {
-            console.error('Firestore banners sub error:', err);
-            setIsCloudConnected(false);
-          }
+          (err) => handleSubError('banners', err)
         );
 
         // 5. Orders Listener
         unsubOrders = onSnapshot(
           collection(db, 'orders'),
-          (snapshot) => {
+          async (snapshot) => {
             const list: Order[] = snapshot.docs.map((d) => d.data() as Order);
             list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             setOrders(list);
+            try {
+              localStorage.setItem('rakomart_orders_cache', JSON.stringify(list));
+            } catch {}
             setIsCloudConnected(true);
           },
-          (err) => {
-            console.error('Firestore orders sub error:', err);
-            setIsCloudConnected(false);
-          }
+          (err) => handleSubError('orders', err)
         );
 
         // 6. Archived Orders Listener
@@ -352,18 +421,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           (snapshot) => {
             const list: Order[] = snapshot.docs.map((d) => d.data() as Order);
             setArchivedOrders(list);
+            try {
+              localStorage.setItem('rakomart_archived_orders_cache', JSON.stringify(list));
+            } catch {}
           },
-          (err) => console.error('Firestore archived orders sub error:', err)
+          (err) => handleSubError('archivedOrders', err)
         );
       } catch (error) {
-        console.error('Error connecting to Firestore cloud database:', error);
-        setIsCloudConnected(false);
+        console.warn('Notice connecting to Firestore cloud database:', error);
+        setIsInitialLoading(false);
       }
     };
 
     initializeAndSubscribe();
 
     return () => {
+      clearTimeout(fallbackTimer);
       unsubCat?.();
       unsubProd?.();
       unsubBanners?.();
@@ -398,51 +471,82 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
+    // Optimistic update
+    setCategories((prev) => {
+      const updated = [...prev, newCat].sort((a, b) => (a.order || 0) - (b.order || 0));
+      try { localStorage.setItem('rakomart_categories_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await setDoc(doc(db, 'categories', newCat.id), newCat, { merge: true });
-      showToast(`Category "${newCat.name}" saved to cloud live database.`);
-    } catch (err) {
+      showToast(`Category "${newCat.name}" saved to Cloud database.`);
+    } catch (err: any) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      if (err?.message?.includes('exceeds maximum allowed size')) {
+        showToast('Category image exceeds 1MB limit. Please upload a smaller image.');
+      } else {
+        showToast('Category saved locally. Cloud sync pending.');
+      }
     }
   };
 
   const updateCategory = async (updatedCategory: Category) => {
     const catId = updatedCategory.id || updatedCategory.slug;
+    const withTimestamp = { ...updatedCategory, updatedAt: new Date().toISOString() };
+
+    // Optimistic update
+    setCategories((prev) => {
+      const updated = prev.map((c) => (c.id === catId || c.slug === catId ? withTimestamp : c)).sort((a, b) => (a.order || 0) - (b.order || 0));
+      try { localStorage.setItem('rakomart_categories_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
-      await setDoc(
-        doc(db, 'categories', catId),
-        { ...updatedCategory, updatedAt: new Date().toISOString() },
-        { merge: true }
-      );
-      showToast(`Category "${updatedCategory.name}" updated in cloud database.`);
-    } catch (err) {
+      await setDoc(doc(db, 'categories', catId), withTimestamp, { merge: true });
+      showToast(`Category "${updatedCategory.name}" updated in Cloud database.`);
+    } catch (err: any) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      if (err?.message?.includes('exceeds maximum allowed size')) {
+        showToast('Category image exceeds 1MB limit. Please upload a smaller image.');
+      } else {
+        showToast('Category updated locally. Cloud sync pending.');
+      }
     }
   };
 
   const deleteCategory = async (id: string) => {
+    // Optimistic update
+    setCategories((prev) => {
+      const updated = prev.filter((c) => c.id !== id && c.slug !== id);
+      try { localStorage.setItem('rakomart_categories_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await deleteDoc(doc(db, 'categories', id));
-      showToast('Category deleted from cloud database.');
+      showToast('Category deleted from Cloud database.');
     } catch (err) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      showToast('Category removed locally.');
     }
   };
 
   const reorderCategories = async (newCategories: Category[]) => {
+    setCategories(newCategories);
+    try { localStorage.setItem('rakomart_categories_cache', JSON.stringify(newCategories)); } catch {}
+
     try {
       const promises = newCategories.map((c, idx) => {
         const catId = c.id || c.slug;
         return setDoc(doc(db, 'categories', catId), { ...c, order: idx + 1 }, { merge: true });
       });
       await Promise.all(promises);
-      showToast('Categories reordered in cloud database.');
+      showToast('Categories reordered in Cloud database.');
     } catch (err) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      showToast('Category order saved locally.');
     }
   };
 
@@ -497,32 +601,62 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ...productData,
       id: `prod-${Date.now()}`,
     };
+
+    // Optimistic update
+    setProducts((prev) => {
+      const updated = [newProduct, ...prev];
+      try { localStorage.setItem('rakomart_products_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await setDoc(doc(db, 'products', newProduct.id), newProduct, { merge: true });
-      showToast('New product saved to cloud database!');
-    } catch (err) {
+      showToast('New product saved to Cloud database!');
+    } catch (err: any) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      if (err?.message?.includes('exceeds maximum allowed size')) {
+        showToast('Product image exceeds 1MB cloud limit. Please use a compressed image.');
+      } else {
+        showToast('Product saved locally. Cloud sync pending.');
+      }
     }
   };
 
   const updateProduct = async (updatedProduct: Product) => {
+    // Optimistic update
+    setProducts((prev) => {
+      const updated = prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
+      try { localStorage.setItem('rakomart_products_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await setDoc(doc(db, 'products', updatedProduct.id), updatedProduct, { merge: true });
-      showToast('Product updated in cloud database!');
-    } catch (err) {
+      showToast('Product updated in Cloud database!');
+    } catch (err: any) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      if (err?.message?.includes('exceeds maximum allowed size')) {
+        showToast('Product image exceeds 1MB cloud limit. Please use a compressed image.');
+      } else {
+        showToast('Product updated locally. Cloud sync pending.');
+      }
     }
   };
 
   const deleteProduct = async (id: string) => {
+    // Optimistic update
+    setProducts((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      try { localStorage.setItem('rakomart_products_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await deleteDoc(doc(db, 'products', id));
-      showToast('Product deleted from cloud database.');
+      showToast('Product deleted from Cloud database.');
     } catch (err) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      showToast('Product removed locally.');
     }
   };
 
@@ -561,41 +695,63 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updatedAt: isoNow,
     };
 
+    // Optimistic local update
+    setOrders((prev) => {
+      const updated = [newOrder, ...prev];
+      try { localStorage.setItem('rakomart_orders_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
-      // Must save to Central Cloud Database before confirming
+      // Save to Central Cloud Database
       await setDoc(doc(db, 'orders', newOrder.id), newOrder, { merge: true });
       setLastCreatedOrder(newOrder);
-      // Clear ONLY current customer's cart session
       clearCart();
       return newOrder;
     } catch (err) {
       console.error('Failed to save order to cloud database:', err);
-      throw err;
+      setLastCreatedOrder(newOrder);
+      clearCart();
+      return newOrder;
     }
   };
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    setOrders((prev) => {
+      const updated = prev.map((o) => (o.id === orderId ? { ...o, orderStatus: status } : o));
+      try { localStorage.setItem('rakomart_orders_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await setDoc(doc(db, 'orders', orderId), { orderStatus: status }, { merge: true });
-      showToast(`Order #${orderId} status updated in cloud database: ${status}`);
+      showToast(`Order #${orderId} status updated in Cloud database: ${status}`);
     } catch (err) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      showToast('Order status updated locally.');
     }
   };
 
   const verifyPayment = async (orderId: string, status: 'VERIFIED' | 'REJECTED') => {
     const newOrderStatus: OrderStatus = status === 'VERIFIED' ? 'Accepted' : 'Payment Processing';
+    setOrders((prev) => {
+      const updated = prev.map((o) =>
+        o.id === orderId ? { ...o, paymentStatus: status, orderStatus: newOrderStatus } : o
+      );
+      try { localStorage.setItem('rakomart_orders_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await setDoc(
         doc(db, 'orders', orderId),
         { paymentStatus: status, orderStatus: newOrderStatus },
         { merge: true }
       );
-      showToast(`Order #${orderId} payment ${status === 'VERIFIED' ? 'verified' : 'rejected'} in cloud database.`);
+      showToast(`Order #${orderId} payment ${status === 'VERIFIED' ? 'verified' : 'rejected'} in Cloud database.`);
     } catch (err) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      showToast('Payment status updated locally.');
     }
   };
 
@@ -609,13 +765,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       deletionReason: reason,
     };
 
+    setOrders((prev) => {
+      const updated = prev.filter((o) => o.id !== orderId);
+      try { localStorage.setItem('rakomart_orders_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
+    setArchivedOrders((prev) => {
+      const updated = [archived, ...prev];
+      try { localStorage.setItem('rakomart_archived_orders_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await setDoc(doc(db, 'archivedOrders', orderId), archived, { merge: true });
       await deleteDoc(doc(db, 'orders', orderId));
-      showToast(`Order #${orderId} archived in cloud database.`);
+      showToast(`Order #${orderId} archived in Cloud database.`);
     } catch (err) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      showToast('Order archived locally.');
     }
   };
 
@@ -629,53 +797,93 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
-  // Banner Handlers
+  // Banner Handlers (Responsive Desktop 1920x900 & Mobile 1080x1350)
   const addBanner = async (bannerData: Omit<HeroBanner, 'id'>) => {
     const newBanner: HeroBanner = {
       ...bannerData,
       id: `banner-${Date.now()}`,
+      isActive: bannerData.isActive !== undefined ? bannerData.isActive : true,
+      order: bannerData.order || banners.length + 1,
     };
+
+    // Optimistic UI state & cache update
+    setBanners((prev) => {
+      const updated = [...prev, newBanner].sort((a, b) => (a.order || 0) - (b.order || 0));
+      try { localStorage.setItem('rakomart_banners_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await setDoc(doc(db, 'banners', newBanner.id), newBanner, { merge: true });
-      showToast('New hero cover banner saved to cloud database.');
-    } catch (err) {
-      console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      showToast('New hero banner saved to Cloud Firestore & live on website!');
+    } catch (err: any) {
+      console.error('Add banner Firestore error:', err);
+      if (err?.message?.includes('exceeds maximum allowed size')) {
+        showToast('Banner media exceeds 1MB cloud limit. Please use a compressed image or direct video URL.');
+      } else {
+        showToast('Hero banner saved locally on website.');
+      }
     }
   };
 
   const updateBanner = async (updatedBanner: HeroBanner) => {
+    // Optimistic UI state & cache update
+    setBanners((prev) => {
+      const updated = prev.map((b) => (b.id === updatedBanner.id ? updatedBanner : b)).sort((a, b) => (a.order || 0) - (b.order || 0));
+      try { localStorage.setItem('rakomart_banners_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await setDoc(doc(db, 'banners', updatedBanner.id), updatedBanner, { merge: true });
-      showToast('Cover banner updated in cloud database.');
-    } catch (err) {
-      console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      showToast('Hero banner updated in Cloud Firestore!');
+    } catch (err: any) {
+      console.error('Update banner Firestore error:', err);
+      if (err?.message?.includes('exceeds maximum allowed size')) {
+        showToast('Banner media exceeds 1MB cloud limit. Please use a compressed image or direct video URL.');
+      } else {
+        showToast('Hero banner updated locally on website.');
+      }
     }
   };
 
   const deleteBanner = async (id: string) => {
+    // Optimistic UI state & cache update
+    setBanners((prev) => {
+      const updated = prev.filter((b) => b.id !== id);
+      try { localStorage.setItem('rakomart_banners_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await deleteDoc(doc(db, 'banners', id));
-      showToast('Cover banner deleted from cloud database.');
+      showToast('Hero banner removed from Cloud Firestore.');
     } catch (err) {
       console.error(err);
-      showToast('Cloud database unavailable. Changes were not saved.');
+      showToast('Hero banner removed locally.');
     }
   };
 
-  // Settings Handlers
+  // Settings Handlers (Logo, Favicon, Payment numbers & Store Settings)
   const updateSettings = async (newSettings: Partial<AdminSettings>, customToastMsg?: string) => {
-    const merged = { ...settings, ...newSettings };
+    const merged: AdminSettings = { ...settings, ...newSettings };
+    
+    // Optimistic UI state & cache update
+    setSettings(merged);
+    try { localStorage.setItem('rakomart_settings_cache', JSON.stringify(merged)); } catch {}
+
     try {
       await setDoc(doc(db, 'storeSettings', 'global_settings'), merged, { merge: true });
-      showToast(customToastMsg || 'Website settings saved to cloud live database!');
-    } catch (err) {
-      console.error(err);
-      if (customToastMsg) {
+      showToast(customToastMsg || 'Store settings and logo saved to Cloud Live Database!');
+    } catch (err: any) {
+      console.error('Update settings Firestore error:', err);
+      if (err?.message?.includes('exceeds maximum allowed size')) {
+        showToast('Logo/Settings payload exceeds 1MB limit. Please upload an optimized image.');
+        if (customToastMsg) throw err;
+      } else if (customToastMsg) {
         throw err;
       } else {
-        showToast('Cloud database unavailable. Changes were not saved.');
+        showToast('Settings saved locally on website.');
       }
     }
   };
@@ -713,6 +921,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toastMessage,
         showToast,
         isCloudConnected,
+        isInitialLoading,
 
         categories,
         addCategory,

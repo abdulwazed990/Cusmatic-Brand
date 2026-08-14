@@ -15,7 +15,13 @@ export const HomeView: React.FC = () => {
   const featuredProducts = products.filter((p) => p.isFeatured).slice(0, 8);
   const bestSellers = products.slice(0, 4);
 
-  const whatsappPhone = settings.customerCarePhone.replace(/\D/g, '');
+  let rawPhone = settings.customerCarePhone || '8801410425948';
+  let whatsappPhone = rawPhone.replace(/\D/g, '');
+  if (whatsappPhone.startsWith('0')) {
+    whatsappPhone = '88' + whatsappPhone;
+  } else if (!whatsappPhone.startsWith('88') && whatsappPhone.length === 10) {
+    whatsappPhone = '880' + whatsappPhone;
+  }
   const whatsappUrl = `https://wa.me/${whatsappPhone}`;
 
   return (

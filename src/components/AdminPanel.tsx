@@ -1129,7 +1129,7 @@ export const AdminPanel: React.FC = () => {
                     <span>Favicon Management</span>
                   </h4>
                   <p className="text-xs text-neutral-600 mt-0.5">
-                    Manage the website favicon displayed in browser tabs, bookmarks, and mobile app icons without touching code.
+                    Manage the website favicon and Google Search site icon displayed in search results, browser tabs, bookmarks, and mobile shortcuts.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1209,7 +1209,7 @@ export const AdminPanel: React.FC = () => {
                   <label className="block font-bold text-xs text-[#281044]">Favicon Management Actions</label>
                   
                   <p className="text-[11px] text-neutral-600 leading-relaxed">
-                    Upload your custom store favicon image. Supports <strong>PNG, JPG, WEBP, ICO, or SVG</strong>. High-resolution square logos are automatically optimized to a crisp 512×512 icon while preserving aspect ratio.
+                    Upload your custom store favicon and Google Search site icon. Supports <strong>PNG, JPG, WEBP, ICO, or SVG</strong>. High-resolution square logos are automatically optimized to a crisp 512×512 icon while preserving aspect ratio.
                   </p>
 
                   <div className="flex flex-wrap gap-2 pt-1">
@@ -1279,7 +1279,7 @@ export const AdminPanel: React.FC = () => {
                 <div>
                   <h4 className="font-bold text-sm text-[#281044]">Main Website Logo</h4>
                   <p className="text-[11px] text-neutral-600">
-                    Upload or update the official RakoMart website logo asset (Facebook profile picture).
+                    Upload or update the official RakoMart website logo asset. Changes sync live to the storefront.
                   </p>
                 </div>
                 <button
@@ -1287,7 +1287,7 @@ export const AdminPanel: React.FC = () => {
                   onClick={() => setSettingsForm({ ...settingsForm, siteLogoUrl: '/rakomart-official-logo.jpg' })}
                   className="text-xs bg-white text-purple-900 border border-purple-300 hover:bg-purple-100 font-bold px-3 py-1.5 rounded-lg shrink-0 transition-colors"
                 >
-                  Reset to Default Facebook Logo
+                  Reset to Default Logo
                 </button>
               </div>
 
@@ -1301,31 +1301,47 @@ export const AdminPanel: React.FC = () => {
                 </div>
 
                 <div className="flex-1 space-y-2 w-full">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <label className="cursor-pointer bg-[#281044] text-white px-3.5 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1.5 hover:bg-[#3b1763] transition-colors">
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Upload Exact Facebook Profile Picture</span>
+                      <span>Upload Logo File (Optimized)</span>
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-                          if (file.size > 5 * 1024 * 1024) {
-                            showToast('Image file size must be less than 5MB');
-                            return;
+                          try {
+                            const compressed = await compressImageFile(file, 800, 800, 0.85);
+                            setSettingsForm(prev => ({ ...prev, siteLogoUrl: compressed }));
+                            showToast('Logo image processed and optimized! Click "Save Logo & Settings" to apply.');
+                          } catch (err) {
+                            console.error('Logo process error:', err);
+                            showToast('Error processing logo image.');
                           }
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            if (reader.result) {
-                              setSettingsForm({ ...settingsForm, siteLogoUrl: reader.result as string });
-                            }
-                          };
-                          reader.readAsDataURL(file);
                         }}
                         className="hidden"
                       />
                     </label>
+
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={async () => {
+                        setIsSaving(true);
+                        try {
+                          await updateSettings(settingsForm, 'Main Website Logo and Settings saved to Cloud & Website!');
+                        } catch (err) {
+                          console.error(err);
+                        } finally {
+                          setIsSaving(false);
+                        }
+                      }}
+                      className="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    >
+                      {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                      <span>Save Logo Now</span>
+                    </button>
                   </div>
 
                   <div>
@@ -1937,6 +1953,10 @@ export const AdminPanel: React.FC = () => {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       if (bannerFormData.mediaType === 'video') {
+                        if (file.size > 800 * 1024) {
+                          showToast(`Video is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Direct database storage supports up to 800KB. For larger videos, please paste the Direct Video URL below.`);
+                          return;
+                        }
                         const reader = new FileReader();
                         reader.onloadend = () => {
                           if (reader.result) {
@@ -1946,6 +1966,7 @@ export const AdminPanel: React.FC = () => {
                               mediaType: 'video',
                               image: bannerFormData.image || '/rakomart-official-logo.jpg'
                             });
+                            showToast('Desktop video loaded!');
                           }
                         };
                         reader.readAsDataURL(file);
@@ -1957,6 +1978,7 @@ export const AdminPanel: React.FC = () => {
                             image: compressed,
                             mediaType: 'image'
                           });
+                          showToast('Desktop image compressed and ready!');
                         } catch (err) {
                           console.error('Compress desktop banner image error:', err);
                           showToast('Error compressing desktop image.');
@@ -2069,6 +2091,10 @@ export const AdminPanel: React.FC = () => {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       if (bannerFormData.mobileMediaType === 'video') {
+                        if (file.size > 800 * 1024) {
+                          showToast(`Mobile video is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Direct database storage supports up to 800KB. For larger videos, please paste the Direct Video URL below.`);
+                          return;
+                        }
                         const reader = new FileReader();
                         reader.onloadend = () => {
                           if (reader.result) {
@@ -2078,6 +2104,7 @@ export const AdminPanel: React.FC = () => {
                               mobileMediaType: 'video',
                               mobileImage: bannerFormData.mobileImage || bannerFormData.image || '/rakomart-official-logo.jpg'
                             });
+                            showToast('Mobile video loaded!');
                           }
                         };
                         reader.readAsDataURL(file);
@@ -2089,6 +2116,7 @@ export const AdminPanel: React.FC = () => {
                             mobileImage: compressed,
                             mobileMediaType: 'image'
                           });
+                          showToast('Mobile image compressed and ready!');
                         } catch (err) {
                           console.error('Compress mobile banner image error:', err);
                           showToast('Error compressing mobile image.');

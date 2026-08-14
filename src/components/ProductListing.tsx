@@ -7,7 +7,12 @@ export const ProductListing: React.FC = () => {
   const { products, categories, selectedCategory, setSelectedCategory, searchQuery, setSearchQuery } = useStore();
 
   const [sortBy, setSortBy] = useState<'featured' | 'price_low' | 'price_high' | 'rating'>('featured');
-  const [maxPrice, setMaxPrice] = useState<number>(3000);
+  const ceilingPrice = useMemo(() => {
+    const maxInList = products.length > 0 ? Math.max(...products.map((p) => p.price || 0)) : 3000;
+    return Math.max(Math.ceil(maxInList / 500) * 500, 3000);
+  }, [products]);
+  const [userMaxPrice, setUserMaxPrice] = useState<number | null>(null);
+  const effectiveMaxPrice = userMaxPrice !== null ? userMaxPrice : ceilingPrice;
 
   const activeCategories = useMemo(() => {
     return categories
@@ -65,7 +70,7 @@ export const ProductListing: React.FC = () => {
       }
 
       // Max Price Filter
-      if (product.price > maxPrice) {
+      if (product.price > effectiveMaxPrice) {
         return false;
       }
 
@@ -76,7 +81,7 @@ export const ProductListing: React.FC = () => {
       if (sortBy === 'rating') return b.rating - a.rating;
       return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
     });
-  }, [products, selectedCategory, searchQuery, maxPrice, sortBy, activeCategoryObj]);
+  }, [products, selectedCategory, searchQuery, effectiveMaxPrice, sortBy, activeCategoryObj]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -153,12 +158,12 @@ export const ProductListing: React.FC = () => {
             Total items found: <span className="text-[#281044] font-extrabold">{filteredProducts.length}</span> products
           </span>
 
-          {(selectedCategory || searchQuery || maxPrice < 3000) && (
+          {(selectedCategory || searchQuery || userMaxPrice !== null) && (
             <button
               onClick={() => {
                 setSelectedCategory(null);
                 setSearchQuery('');
-                setMaxPrice(3000);
+                setUserMaxPrice(null);
               }}
               className="text-xs text-red-600 font-semibold hover:underline"
             >
@@ -175,13 +180,13 @@ export const ProductListing: React.FC = () => {
             <input
               type="range"
               min="500"
-              max="3000"
+              max={ceilingPrice}
               step="100"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(Number(e.target.value))}
+              value={effectiveMaxPrice}
+              onChange={(e) => setUserMaxPrice(Number(e.target.value))}
               className="w-24 sm:w-32 accent-[#281044] cursor-pointer"
             />
-            <span className="font-bold text-[#281044]">৳{maxPrice}</span>
+            <span className="font-bold text-[#281044]">৳{effectiveMaxPrice.toLocaleString()}</span>
           </div>
 
           {/* Sorting Dropdown */}
@@ -216,7 +221,7 @@ export const ProductListing: React.FC = () => {
             onClick={() => {
               setSelectedCategory(null);
               setSearchQuery('');
-              setMaxPrice(3000);
+              setUserMaxPrice(null);
             }}
             className="bg-[#281044] text-white text-xs font-bold px-6 py-2.5 rounded-full shadow-xs"
           >
