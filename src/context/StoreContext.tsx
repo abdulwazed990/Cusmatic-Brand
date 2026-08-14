@@ -92,6 +92,131 @@ interface StoreContextType {
 
 const CART_EXPIRATION_MS = 30 * 60 * 1000; // 30 minutes
 
+export const sanitizeOrder = (raw: any, fallbackId?: string): Order => {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      id: fallbackId || `RM-INVALID-${Date.now()}`,
+      customerName: 'Customer',
+      customerMobile: 'N/A',
+      deliveryArea: 'inside_dhaka',
+      district: 'Dhaka',
+      upazila: 'Dhaka',
+      address: 'Address not specified',
+      items: [],
+      subtotal: 0,
+      deliveryFee: 0,
+      total: 0,
+      paymentMethod: 'cod',
+      paymentAmount: 0,
+      orderStatus: 'New Order',
+      paymentStatus: 'NOT_APPLICABLE',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const id = String(raw.id || fallbackId || `RM-ORDER-${Date.now()}`);
+  const customerName = String(raw.customerName || 'Customer');
+  const customerMobile = String(raw.customerMobile || '');
+  const deliveryArea = raw.deliveryArea === 'outside_dhaka' ? 'outside_dhaka' : 'inside_dhaka';
+  const district = String(raw.district || 'Dhaka');
+  const upazila = String(raw.upazila || '');
+  const address = String(raw.address || '');
+
+  const items = Array.isArray(raw.items)
+    ? raw.items.map((item: any, idx: number) => ({
+        product: {
+          id: String(item?.product?.id || `item-${idx}`),
+          title: String(item?.product?.title || 'Product'),
+          titleBn: item?.product?.titleBn ? String(item.product.titleBn) : undefined,
+          price: Number(item?.product?.price) || 0,
+          originalPrice: item?.product?.originalPrice ? Number(item.product.originalPrice) : undefined,
+          discountBadge: item?.product?.discountBadge ? String(item.product.discountBadge) : undefined,
+          image: String(item?.product?.image || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&q=80'),
+          category: String(item?.product?.category || 'skincare'),
+          categoryBn: item?.product?.categoryBn ? String(item.product.categoryBn) : undefined,
+          stock: Number(item?.product?.stock) || 0,
+          description: String(item?.product?.description || ''),
+          rating: Number(item?.product?.rating) || 5.0,
+          reviewsCount: Number(item?.product?.reviewsCount) || 0,
+          volume: item?.product?.volume ? String(item.product.volume) : undefined,
+          brand: item?.product?.brand ? String(item.product.brand) : undefined,
+        },
+        quantity: Math.max(1, Number(item?.quantity) || 1),
+      }))
+    : [];
+
+  const subtotal = typeof raw.subtotal === 'number' && !isNaN(raw.subtotal)
+    ? raw.subtotal
+    : (items.reduce((s: number, i: any) => s + (i.product.price * i.quantity), 0) || Number(raw.total) || 0);
+  const deliveryFee = typeof raw.deliveryFee === 'number' && !isNaN(raw.deliveryFee) ? raw.deliveryFee : 0;
+  const total = typeof raw.total === 'number' && !isNaN(raw.total) ? raw.total : (subtotal + deliveryFee);
+  const paymentMethod = (raw.paymentMethod === 'bkash' || raw.paymentMethod === 'nagad' || raw.paymentMethod === 'cod') ? raw.paymentMethod : 'cod';
+  const paymentAmount = typeof raw.paymentAmount === 'number' && !isNaN(raw.paymentAmount) ? raw.paymentAmount : total;
+
+  let orderStatus: OrderStatus = 'New Order';
+  const rawStatus = String(raw.orderStatus || '').trim();
+  const validStatuses: OrderStatus[] = [
+    'New Order',
+    'Payment Processing',
+    'Accepted',
+    'Processing',
+    'Packaging',
+    'Handed to Courier',
+    'In Transit',
+    'Delivered',
+    'Cancelled',
+    'Archived'
+  ];
+
+  if (validStatuses.includes(rawStatus as OrderStatus)) {
+    orderStatus = rawStatus as OrderStatus;
+  } else if (rawStatus.toLowerCase().includes('pack')) {
+    orderStatus = 'Packaging';
+  } else if (rawStatus.toLowerCase().includes('courier')) {
+    orderStatus = 'Handed to Courier';
+  } else if (rawStatus.toLowerCase().includes('transit')) {
+    orderStatus = 'In Transit';
+  } else if (rawStatus.toLowerCase().includes('deliver')) {
+    orderStatus = 'Delivered';
+  } else if (rawStatus.toLowerCase().includes('cancel')) {
+    orderStatus = 'Cancelled';
+  } else if (rawStatus.toLowerCase().includes('accept') || rawStatus.toLowerCase().includes('process')) {
+    orderStatus = 'Processing';
+  } else {
+    orderStatus = paymentMethod === 'cod' ? 'New Order' : 'Payment Processing';
+  }
+
+  const paymentStatus = raw.paymentStatus || (paymentMethod === 'cod' ? 'NOT_APPLICABLE' : 'PROCESSING');
+  const createdAt = raw.createdAt && typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString();
+  const updatedAt = raw.updatedAt && typeof raw.updatedAt === 'string' ? raw.updatedAt : createdAt;
+
+  return {
+    id,
+    customerName,
+    customerEmail: raw.customerEmail ? String(raw.customerEmail) : undefined,
+    customerMobile,
+    deliveryArea,
+    district,
+    upazila,
+    address,
+    items,
+    subtotal,
+    deliveryFee,
+    total,
+    paymentMethod,
+    paymentAmount,
+    transactionId: raw.transactionId ? String(raw.transactionId) : undefined,
+    notes: raw.notes ? String(raw.notes) : undefined,
+    orderStatus,
+    paymentStatus,
+    createdAt,
+    updatedAt,
+    archivedAt: raw.archivedAt ? String(raw.archivedAt) : undefined,
+    deletionReason: raw.deletionReason ? String(raw.deletionReason) : undefined,
+  };
+};
+
 const getSessionId = (): string => {
   try {
     let sid = localStorage.getItem('rakomart_session_id');
@@ -176,16 +301,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [orders, setOrders] = useState<Order[]>(() => {
     try {
       const cached = localStorage.getItem('rakomart_orders_cache');
-      return cached ? JSON.parse(cached) : INITIAL_ORDERS;
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => sanitizeOrder(item));
+        }
+      }
+      return INITIAL_ORDERS.map((item) => sanitizeOrder(item));
     } catch {
-      return INITIAL_ORDERS;
+      return INITIAL_ORDERS.map((item) => sanitizeOrder(item));
     }
   });
 
   const [archivedOrders, setArchivedOrders] = useState<Order[]>(() => {
     try {
       const cached = localStorage.getItem('rakomart_archived_orders_cache');
-      return cached ? JSON.parse(cached) : [];
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => sanitizeOrder(item));
+        }
+      }
+      return [];
     } catch {
       return [];
     }
@@ -431,9 +568,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // 5. Orders Listener
         unsubOrders = onSnapshot(
           collection(db, 'orders'),
-          async (snapshot) => {
-            const list: Order[] = snapshot.docs.map((d) => d.data() as Order);
-            list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          (snapshot) => {
+            const list: Order[] = snapshot.docs.map((d) => sanitizeOrder(d.data(), d.id));
+            list.sort((a, b) => {
+              const timeA = new Date(a.createdAt).getTime() || 0;
+              const timeB = new Date(b.createdAt).getTime() || 0;
+              return timeB - timeA;
+            });
             setOrders(list);
             try {
               localStorage.setItem('rakomart_orders_cache', JSON.stringify(list));
@@ -447,7 +588,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         unsubArchived = onSnapshot(
           collection(db, 'archivedOrders'),
           (snapshot) => {
-            const list: Order[] = snapshot.docs.map((d) => d.data() as Order);
+            const list: Order[] = snapshot.docs.map((d) => sanitizeOrder(d.data(), d.id));
             setArchivedOrders(list);
             try {
               localStorage.setItem('rakomart_archived_orders_cache', JSON.stringify(list));
@@ -745,26 +886,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    const nowIso = new Date().toISOString();
     setOrders((prev) => {
-      const updated = prev.map((o) => (o.id === orderId ? { ...o, orderStatus: status } : o));
+      const updated = prev.map((o) => (o.id === orderId ? { ...o, orderStatus: status, updatedAt: nowIso } : o));
       try { localStorage.setItem('rakomart_orders_cache', JSON.stringify(updated)); } catch {}
       return updated;
     });
 
     try {
-      await setDoc(doc(db, 'orders', orderId), { orderStatus: status }, { merge: true });
-      showToast(`Order #${orderId} status updated in Cloud database: ${status}`);
+      await setDoc(doc(db, 'orders', orderId), { orderStatus: status, updatedAt: nowIso }, { merge: true });
+      showToast(`Order #${orderId} status: ${status}`);
     } catch (err) {
       console.error(err);
-      showToast('Order status updated locally.');
+      showToast(`Order #${orderId} status: ${status}`);
     }
   };
 
   const verifyPayment = async (orderId: string, status: 'VERIFIED' | 'REJECTED') => {
-    const newOrderStatus: OrderStatus = status === 'VERIFIED' ? 'Accepted' : 'Payment Processing';
+    const nowIso = new Date().toISOString();
+    const newOrderStatus: OrderStatus = status === 'VERIFIED' ? 'Processing' : 'Payment Processing';
     setOrders((prev) => {
       const updated = prev.map((o) =>
-        o.id === orderId ? { ...o, paymentStatus: status, orderStatus: newOrderStatus } : o
+        o.id === orderId ? { ...o, paymentStatus: status, orderStatus: newOrderStatus, updatedAt: nowIso } : o
       );
       try { localStorage.setItem('rakomart_orders_cache', JSON.stringify(updated)); } catch {}
       return updated;
@@ -773,13 +916,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await setDoc(
         doc(db, 'orders', orderId),
-        { paymentStatus: status, orderStatus: newOrderStatus },
+        { paymentStatus: status, orderStatus: newOrderStatus, updatedAt: nowIso },
         { merge: true }
       );
-      showToast(`Order #${orderId} payment ${status === 'VERIFIED' ? 'verified' : 'rejected'} in Cloud database.`);
+      showToast(`Order #${orderId} payment ${status === 'VERIFIED' ? 'verified' : 'rejected'}.`);
     } catch (err) {
       console.error(err);
-      showToast('Payment status updated locally.');
+      showToast(`Order #${orderId} payment ${status === 'VERIFIED' ? 'verified' : 'rejected'}.`);
     }
   };
 

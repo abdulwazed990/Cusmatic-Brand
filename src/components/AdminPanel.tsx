@@ -3,10 +3,10 @@ import {
   Lock, LayoutDashboard, ShoppingCart, Package, Image as ImageIcon,
   Settings, Archive, BarChart3, CheckCircle2, XCircle, Trash2, Edit,
   Plus, Search, ArrowLeft, RefreshCw, Eye, FolderTree, ArrowUp, ArrowDown, Upload, Tag, Video, Loader2, Sparkles, AlertCircle,
-  Monitor, Smartphone
+  Monitor, Smartphone, Printer, X
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { OrderStatus, Product, HeroBanner, Category } from '../types';
+import { Order, OrderStatus, Product, HeroBanner, Category } from '../types';
 import { RakoMartLogoIcon } from './RakoMartLogo';
 import { compressImageFile, processFaviconFile } from '../lib/imageUtils';
 import { DEFAULT_FAVICON_URL } from '../lib/faviconUtils';
@@ -80,6 +80,7 @@ export const AdminPanel: React.FC = () => {
   // Archive modal
   const [archivingOrderId, setArchivingOrderId] = useState<string | null>(null);
   const [archiveReason, setArchiveReason] = useState('Customer unreachable');
+  const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<Order | null>(null);
 
   // Settings Form State
   const [settingsForm, setSettingsForm] = useState(settings);
@@ -161,28 +162,56 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  // Dashboard Stats Calculations
+  // Dashboard Stats Calculations with null-safety
   const totalOrdersCount = orders.length;
-  const todayOrdersCount = orders.filter((o) => {
-    const today = new Date().toISOString().split('T')[0];
-    return o.createdAt.startsWith(today);
-  }).length;
-  const totalRevenue = orders
-    .filter((o) => o.paymentStatus === 'VERIFIED' || o.orderStatus === 'Delivered')
-    .reduce((acc, o) => acc + o.total, 0);
-  const pendingPaymentsCount = orders.filter((o) => o.paymentStatus === 'PROCESSING').length;
+  const newOrdersCount = orders.filter((o) => o.orderStatus === 'New Order' || o.orderStatus === 'Payment Processing').length;
+  const processingOrdersCount = orders.filter((o) => o.orderStatus === 'Processing' || o.orderStatus === 'Accepted').length;
+  const packagingCount = orders.filter((o) => o.orderStatus === 'Packaging').length;
+  const courierCount = orders.filter((o) => o.orderStatus === 'Handed to Courier').length;
+  const inTransitCount = orders.filter((o) => o.orderStatus === 'In Transit').length;
+  const deliveredCount = orders.filter((o) => o.orderStatus === 'Delivered').length;
+  const cancelledCount = orders.filter((o) => o.orderStatus === 'Cancelled').length;
 
-  // Filtered Orders
-  const filteredOrders = orders.filter((order) => {
-    if (selectedOrderStatusFilter !== 'all' && order.orderStatus !== selectedOrderStatusFilter) {
+  const todayOrdersCount = orders.filter((o) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      return o.createdAt && typeof o.createdAt === 'string' && o.createdAt.startsWith(today);
+    } catch {
       return false;
     }
+  }).length;
+
+  const totalRevenue = orders
+    .filter((o) => o.paymentStatus === 'VERIFIED' || o.orderStatus === 'Delivered')
+    .reduce((acc, o) => acc + (Number(o.total) || 0), 0);
+
+  const pendingPaymentsCount = orders.filter((o) => o.paymentStatus === 'PROCESSING').length;
+
+  // Filtered Orders (crash-proof)
+  const filteredOrders = orders.filter((order) => {
+    if (!order) return false;
+
+    // Status Filter Matching
+    if (selectedOrderStatusFilter === 'new_orders') {
+      if (order.orderStatus !== 'New Order' && order.orderStatus !== 'Payment Processing') {
+        return false;
+      }
+    } else if (selectedOrderStatusFilter === 'processing') {
+      if (order.orderStatus !== 'Processing' && order.orderStatus !== 'Accepted') {
+        return false;
+      }
+    } else if (selectedOrderStatusFilter !== 'all') {
+      if (order.orderStatus !== selectedOrderStatusFilter) {
+        return false;
+      }
+    }
+
     if (orderSearchQuery.trim()) {
-      const q = orderSearchQuery.toLowerCase();
-      const matchId = order.id.toLowerCase().includes(q);
-      const matchName = order.customerName.toLowerCase().includes(q);
-      const matchMobile = order.customerMobile.includes(q);
-      const matchTrx = order.transactionId?.toLowerCase().includes(q);
+      const q = orderSearchQuery.toLowerCase().trim();
+      const matchId = String(order.id || '').toLowerCase().includes(q);
+      const matchName = String(order.customerName || '').toLowerCase().includes(q);
+      const matchMobile = String(order.customerMobile || '').includes(q);
+      const matchTrx = String(order.transactionId || '').toLowerCase().includes(q);
       return matchId || matchName || matchMobile || matchTrx;
     }
     return true;
@@ -190,9 +219,14 @@ export const AdminPanel: React.FC = () => {
 
   // Filtered Archived Orders
   const filteredArchived = archivedOrders.filter((o) => {
+    if (!o) return false;
     if (!archivedSearchQuery.trim()) return true;
-    const q = archivedSearchQuery.toLowerCase();
-    return o.id.toLowerCase().includes(q) || o.customerMobile.includes(q) || o.customerName.toLowerCase().includes(q);
+    const q = archivedSearchQuery.toLowerCase().trim();
+    return (
+      String(o.id || '').toLowerCase().includes(q) ||
+      String(o.customerMobile || '').includes(q) ||
+      String(o.customerName || '').toLowerCase().includes(q)
+    );
   });
 
   if (!isAuthenticated) {
@@ -540,6 +574,121 @@ export const AdminPanel: React.FC = () => {
       {/* TAB 2: ORDERS MANAGEMENT */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
+          {/* Quick Filter Status Badges */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+            <button
+              onClick={() => setSelectedOrderStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all border ${
+                selectedOrderStatusFilter === 'all'
+                  ? 'bg-[#281044] text-white border-[#281044] shadow-xs'
+                  : 'bg-white text-neutral-700 hover:bg-neutral-50 border-neutral-200'
+              }`}
+            >
+              <span>All Orders</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedOrderStatusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-600'}`}>
+                {orders.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedOrderStatusFilter('new_orders')}
+              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all border ${
+                selectedOrderStatusFilter === 'new_orders' || selectedOrderStatusFilter === 'New Order' || selectedOrderStatusFilter === 'Payment Processing'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-white text-amber-900 hover:bg-amber-50 border-amber-200'
+              }`}
+            >
+              <span>New Orders</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedOrderStatusFilter === 'new_orders' || selectedOrderStatusFilter === 'New Order' || selectedOrderStatusFilter === 'Payment Processing' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                {newOrdersCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedOrderStatusFilter('processing')}
+              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all border ${
+                selectedOrderStatusFilter === 'processing' || selectedOrderStatusFilter === 'Processing' || selectedOrderStatusFilter === 'Accepted'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-white text-blue-900 hover:bg-blue-50 border-blue-200'
+              }`}
+            >
+              <span>Processing Orders</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedOrderStatusFilter === 'processing' || selectedOrderStatusFilter === 'Processing' || selectedOrderStatusFilter === 'Accepted' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'}`}>
+                {processingOrdersCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedOrderStatusFilter('Packaging')}
+              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all border ${
+                selectedOrderStatusFilter === 'Packaging'
+                  ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                  : 'bg-white text-purple-900 hover:bg-purple-50 border-purple-200'
+              }`}
+            >
+              <span>Packaging</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedOrderStatusFilter === 'Packaging' ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-800'}`}>
+                {packagingCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedOrderStatusFilter('Handed to Courier')}
+              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all border ${
+                selectedOrderStatusFilter === 'Handed to Courier'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  : 'bg-white text-indigo-900 hover:bg-indigo-50 border-indigo-200'
+              }`}
+            >
+              <span>Courier</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedOrderStatusFilter === 'Handed to Courier' ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-800'}`}>
+                {courierCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedOrderStatusFilter('In Transit')}
+              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all border ${
+                selectedOrderStatusFilter === 'In Transit'
+                  ? 'bg-cyan-700 text-white border-cyan-700 shadow-xs'
+                  : 'bg-white text-cyan-900 hover:bg-cyan-50 border-cyan-200'
+              }`}
+            >
+              <span>In Transit</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedOrderStatusFilter === 'In Transit' ? 'bg-white/20 text-white' : 'bg-cyan-100 text-cyan-800'}`}>
+                {inTransitCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedOrderStatusFilter('Delivered')}
+              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all border ${
+                selectedOrderStatusFilter === 'Delivered'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  : 'bg-white text-emerald-900 hover:bg-emerald-50 border-emerald-200'
+              }`}
+            >
+              <span>Delivered</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedOrderStatusFilter === 'Delivered' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                {deliveredCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedOrderStatusFilter('Cancelled')}
+              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all border ${
+                selectedOrderStatusFilter === 'Cancelled'
+                  ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                  : 'bg-white text-red-900 hover:bg-red-50 border-red-200'
+              }`}
+            >
+              <span>Cancelled</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedOrderStatusFilter === 'Cancelled' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-800'}`}>
+                {cancelledCount}
+              </span>
+            </button>
+          </div>
+
           <div className="bg-white p-4 rounded-xl border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Search input */}
             <div className="relative flex-1 max-w-md">
@@ -562,15 +711,13 @@ export const AdminPanel: React.FC = () => {
                 className="bg-neutral-50 border rounded-lg px-3 py-1.5 focus:outline-none"
               >
                 <option value="all">All Orders ({orders.length})</option>
-                <option value="New Order">New Order</option>
-                <option value="Payment Processing">Payment Processing</option>
-                <option value="Accepted">Accepted</option>
-                <option value="Processing">Processing</option>
-                <option value="Packaging">Packaging</option>
-                <option value="Handed to Courier">Handed to Courier</option>
-                <option value="In Transit">In Transit</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
+                <option value="new_orders">New Orders ({newOrdersCount})</option>
+                <option value="processing">Processing Orders ({processingOrdersCount})</option>
+                <option value="Packaging">Packaging ({packagingCount})</option>
+                <option value="Handed to Courier">Handed to Courier ({courierCount})</option>
+                <option value="In Transit">In Transit ({inTransitCount})</option>
+                <option value="Delivered">Delivered ({deliveredCount})</option>
+                <option value="Cancelled">Cancelled ({cancelledCount})</option>
               </select>
             </div>
           </div>
@@ -583,9 +730,9 @@ export const AdminPanel: React.FC = () => {
                   <tr>
                     <th className="p-3">Order ID</th>
                     <th className="p-3">Customer & Mobile</th>
-                    <th className="p-3">Address</th>
+                    <th className="p-3">Address & Date</th>
                     <th className="p-3">Total Amount</th>
-                    <th className="p-3">Method & TrxID</th>
+                    <th className="p-3">Payment</th>
                     <th className="p-3">Status</th>
                     <th className="p-3 text-right">Action</th>
                   </tr>
@@ -599,23 +746,52 @@ export const AdminPanel: React.FC = () => {
                     </tr>
                   ) : (
                     filteredOrders.map((order) => (
-                      <tr key={order.id} className="hover:bg-neutral-50">
-                        <td className="p-3 font-mono font-bold text-[#281044]">#{order.id}</td>
-                        <td className="p-3">
-                          <span className="font-bold text-neutral-900 block">{order.customerName}</span>
-                          <span className="text-neutral-500 font-mono">{order.customerMobile}</span>
+                      <tr key={order.id} className="hover:bg-neutral-50 transition-colors">
+                        <td className="p-3 font-mono font-bold text-[#281044]">
+                          <button
+                            onClick={() => setSelectedOrderForDetails(order)}
+                            className="hover:underline text-left"
+                            title="View Invoice & Order Items"
+                          >
+                            #{order.id}
+                          </button>
+                          <span className="block text-[10px] text-neutral-400 font-normal">
+                            {order.items?.length || 0} items
+                          </span>
                         </td>
-                        <td className="p-3 text-neutral-600 max-w-xs truncate">
-                          {order.district}, {order.upazila} ({order.address})
+                        <td className="p-3">
+                          <span className="font-bold text-neutral-900 block">{order.customerName || 'Customer'}</span>
+                          <span className="text-neutral-500 font-mono">{order.customerMobile || 'N/A'}</span>
+                        </td>
+                        <td className="p-3 text-neutral-600 max-w-xs">
+                          <span className="truncate block">
+                            {order.district}{order.upazila ? `, ${order.upazila}` : ''} ({order.address})
+                          </span>
+                          <span className="text-[10px] text-neutral-400 block mt-0.5">
+                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US') : 'Recent'}
+                          </span>
                         </td>
                         <td className="p-3 font-extrabold text-[#281044]">
-                          ৳{order.total.toLocaleString()}
+                          ৳{(order.total || 0).toLocaleString()}
                         </td>
                         <td className="p-3">
-                          <span className="uppercase font-bold block">{order.paymentMethod}</span>
+                          <span className="uppercase font-bold block">{order.paymentMethod || 'COD'}</span>
                           {order.transactionId && (
-                            <span className="font-mono text-[10px] bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded border">
+                            <span className="font-mono text-[10px] bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded border block w-fit mt-0.5">
                               {order.transactionId}
+                            </span>
+                          )}
+                          {order.paymentMethod !== 'cod' && (
+                            <span
+                              className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded inline-block mt-0.5 ${
+                                order.paymentStatus === 'VERIFIED'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : order.paymentStatus === 'REJECTED'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {order.paymentStatus || 'PROCESSING'}
                             </span>
                           )}
                         </td>
@@ -623,11 +799,10 @@ export const AdminPanel: React.FC = () => {
                           <select
                             value={order.orderStatus}
                             onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
-                            className="bg-neutral-100 border border-neutral-300 rounded px-2 py-1 text-xs font-bold"
+                            className="bg-neutral-100 border border-neutral-300 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#281044]"
                           >
                             <option value="New Order">New Order</option>
                             <option value="Payment Processing">Payment Processing</option>
-                            <option value="Accepted">Accepted</option>
                             <option value="Processing">Processing</option>
                             <option value="Packaging">Packaging</option>
                             <option value="Handed to Courier">Handed to Courier</option>
@@ -637,13 +812,42 @@ export const AdminPanel: React.FC = () => {
                           </select>
                         </td>
                         <td className="p-3 text-right">
-                          <button
-                            onClick={() => setArchivingOrderId(order.id)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                            title="Archive & Delete Order"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Quick Accept button for New Orders */}
+                            {(order.orderStatus === 'New Order' || order.orderStatus === 'Payment Processing') && (
+                              <button
+                                onClick={() => {
+                                  updateOrderStatus(order.id, 'Processing');
+                                  if (order.paymentMethod !== 'cod' && order.paymentStatus !== 'VERIFIED') {
+                                    verifyPayment(order.id, 'VERIFIED');
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 shadow-xs transition-colors shrink-0"
+                                title="Accept Order & Move to Processing"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Accept</span>
+                              </button>
+                            )}
+
+                            {/* View Order Details & Invoice Slip */}
+                            <button
+                              onClick={() => setSelectedOrderForDetails(order)}
+                              className="p-1.5 text-[#281044] hover:bg-purple-50 rounded-lg transition-colors"
+                              title="View Order Details & Invoice"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            {/* Archive & Delete Order */}
+                            <button
+                              onClick={() => setArchivingOrderId(order.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Archive & Delete Order"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -693,15 +897,20 @@ export const AdminPanel: React.FC = () => {
 
                   <div className="flex gap-2 pt-2 border-t">
                     <button
-                      onClick={() => verifyPayment(order.id, 'VERIFIED')}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1"
+                      onClick={() => {
+                        verifyPayment(order.id, 'VERIFIED');
+                        if (order.orderStatus === 'New Order' || order.orderStatus === 'Payment Processing') {
+                          updateOrderStatus(order.id, 'Processing');
+                        }
+                      }}
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 shadow-xs transition-colors"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>ACCEPT PAYMENT</span>
                     </button>
                     <button
                       onClick={() => verifyPayment(order.id, 'REJECTED')}
-                      className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1"
+                      className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 shadow-xs transition-colors"
                     >
                       <XCircle className="w-4 h-4" />
                       <span>REJECT PAYMENT</span>
@@ -2220,6 +2429,212 @@ export const AdminPanel: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ORDER DETAILS & INVOICE SLIP MODAL */}
+      {/* ========================================================================= */}
+      {selectedOrderForDetails && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl relative my-8 border border-neutral-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#281044] text-white flex items-center justify-center font-bold">
+                  <RakoMartLogoIcon className="w-6 h-6 text-white" color="#ffffff" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg text-neutral-900">
+                    Order Invoice #{selectedOrderForDetails.id}
+                  </h3>
+                  <p className="text-xs text-neutral-500">
+                    Placed on {selectedOrderForDetails.createdAt ? new Date(selectedOrderForDetails.createdAt).toLocaleString('en-US') : 'Recent'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="p-2 border rounded-lg text-neutral-600 hover:bg-neutral-50 transition-colors"
+                  title="Print Order Slip"
+                >
+                  <Printer className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setSelectedOrderForDetails(null)}
+                  className="p-2 border rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Status & Payment Summary */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-neutral-50 p-4 rounded-xl border border-neutral-200 text-xs">
+              <div>
+                <span className="text-neutral-500 font-medium block">Order Status</span>
+                <span className="font-bold text-[#281044] text-sm block mt-0.5">{selectedOrderForDetails.orderStatus}</span>
+              </div>
+              <div>
+                <span className="text-neutral-500 font-medium block">Payment Method</span>
+                <span className="font-bold text-neutral-900 uppercase text-sm block mt-0.5">{selectedOrderForDetails.paymentMethod}</span>
+              </div>
+              <div>
+                <span className="text-neutral-500 font-medium block">Payment Status</span>
+                <span className={`font-bold text-xs uppercase px-2 py-0.5 rounded inline-block mt-0.5 ${
+                  selectedOrderForDetails.paymentStatus === 'VERIFIED'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : selectedOrderForDetails.paymentStatus === 'REJECTED'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {selectedOrderForDetails.paymentStatus || 'PROCESSING'}
+                </span>
+              </div>
+              <div>
+                <span className="text-neutral-500 font-medium block">Transaction ID</span>
+                <span className="font-mono font-bold text-neutral-800 block mt-0.5 truncate">
+                  {selectedOrderForDetails.transactionId || 'N/A (Cash)'}
+                </span>
+              </div>
+            </div>
+
+            {/* Customer Information */}
+            <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-2 text-xs">
+              <h4 className="font-bold text-neutral-900 text-sm border-b pb-2">Customer & Shipping Information</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <span className="text-neutral-500 block">Customer Name:</span>
+                  <span className="font-bold text-neutral-900">{selectedOrderForDetails.customerName}</span>
+                </div>
+                <div>
+                  <span className="text-neutral-500 block">Mobile Number:</span>
+                  <span className="font-bold font-mono text-neutral-900">{selectedOrderForDetails.customerMobile}</span>
+                </div>
+                <div>
+                  <span className="text-neutral-500 block">District & Area:</span>
+                  <span className="font-medium text-neutral-800">{selectedOrderForDetails.district}{selectedOrderForDetails.upazila ? `, ${selectedOrderForDetails.upazila}` : ''}</span>
+                </div>
+                <div>
+                  <span className="text-neutral-500 block">Full Delivery Address:</span>
+                  <span className="font-medium text-neutral-800">{selectedOrderForDetails.address}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Ordered Items List */}
+            <div className="space-y-3">
+              <h4 className="font-bold text-neutral-900 text-sm">Ordered Products ({selectedOrderForDetails.items?.length || 0})</h4>
+              <div className="border border-neutral-200 rounded-xl overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-neutral-100 font-bold text-neutral-700 border-b">
+                    <tr>
+                      <th className="p-3">Product</th>
+                      <th className="p-3 text-center">Qty</th>
+                      <th className="p-3 text-right">Unit Price</th>
+                      <th className="p-3 text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200">
+                    {selectedOrderForDetails.items?.map((item, idx) => {
+                      const itemTitle = item.product?.title || (item.product as any)?.name || 'Item';
+                      const itemPrice = Number(item.product?.price) || 0;
+                      const itemQty = Number(item.quantity) || 1;
+                      const itemImg = item.product?.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100';
+
+                      return (
+                        <tr key={idx} className="hover:bg-neutral-50">
+                          <td className="p-3 flex items-center gap-2.5">
+                            <img
+                              src={itemImg}
+                              alt={itemTitle}
+                              className="w-9 h-9 object-cover rounded-lg border"
+                            />
+                            <span className="font-bold text-neutral-800">{itemTitle}</span>
+                          </td>
+                          <td className="p-3 text-center font-bold font-mono">{itemQty}</td>
+                          <td className="p-3 text-right text-neutral-600">৳{itemPrice.toLocaleString()}</td>
+                          <td className="p-3 text-right font-extrabold text-neutral-900">
+                            ৳{(itemPrice * itemQty).toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Financial Breakdown */}
+            <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200 space-y-1.5 text-xs">
+              <div className="flex justify-between text-neutral-600">
+                <span>Subtotal Items:</span>
+                <span>৳{(Number(selectedOrderForDetails.subtotal) || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-neutral-600">
+                <span>Delivery Charge:</span>
+                <span>৳{(Number(selectedOrderForDetails.deliveryFee ?? (selectedOrderForDetails as any).deliveryCharge) || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-neutral-900 font-extrabold text-base pt-2 border-t border-neutral-300">
+                <span>Total Payable:</span>
+                <span className="text-[#281044]">৳{(Number(selectedOrderForDetails.total) || 0).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Quick Status Workflow Selector inside modal */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-neutral-700">Update Status:</span>
+                <select
+                  value={selectedOrderForDetails.orderStatus}
+                  onChange={(e) => {
+                    const nextStatus = e.target.value as OrderStatus;
+                    updateOrderStatus(selectedOrderForDetails.id, nextStatus);
+                    setSelectedOrderForDetails({
+                      ...selectedOrderForDetails,
+                      orderStatus: nextStatus
+                    });
+                  }}
+                  className="bg-neutral-100 border border-neutral-300 rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-1 focus:ring-[#281044]"
+                >
+                  <option value="New Order">New Order</option>
+                  <option value="Payment Processing">Payment Processing</option>
+                  <option value="Processing">Processing</option>
+                  <option value="Packaging">Packaging</option>
+                  <option value="Handed to Courier">Handed to Courier</option>
+                  <option value="In Transit">In Transit</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedOrderForDetails.paymentMethod !== 'cod' && selectedOrderForDetails.paymentStatus !== 'VERIFIED' && (
+                  <button
+                    onClick={() => {
+                      verifyPayment(selectedOrderForDetails.id, 'VERIFIED');
+                      setSelectedOrderForDetails({
+                        ...selectedOrderForDetails,
+                        paymentStatus: 'VERIFIED'
+                      });
+                    }}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 shadow-xs transition-colors"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Verify Payment</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedOrderForDetails(null)}
+                  className="px-4 py-1.5 bg-[#281044] text-white rounded-lg font-bold text-xs hover:bg-[#3b1763] transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

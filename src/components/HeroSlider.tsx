@@ -233,9 +233,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
               {/* Right Side: Logo & Value Pillars */}
               <div className="w-full md:w-2/5 flex flex-col items-center md:items-end text-center md:text-right space-y-6 shrink-0">
                 <div className="flex flex-col items-center md:items-end">
-                  <RakoMartLogoIcon className="w-16 h-16 sm:w-20 sm:h-20 text-[#281044]" />
                   <span
-                    className="text-xs sm:text-sm font-bold text-[#281044] tracking-tight mt-1"
+                    className="text-base sm:text-lg font-bold text-[#281044] tracking-tight"
                     style={{ fontFamily: "'Mali', 'Sniglet', cursive" }}
                   >
                     RakoMart
@@ -446,7 +445,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
           )}
 
           {/* Desktop Pagination & Controls */}
-          {activeBanners.length > 1 && (
+          {activeBanners.length > 1 && position !== 'hero2' && (
             <div className="absolute bottom-4 right-6 z-20 pointer-events-auto">
               <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
                 <button
@@ -614,7 +613,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
           )}
 
           {/* Mobile Pagination & Controls */}
-          {activeBanners.length > 1 && (
+          {activeBanners.length > 1 && position !== 'hero2' && (
             <div className="absolute bottom-2.5 right-3 z-20 pointer-events-auto">
               <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded-full border border-white/20">
                 <button

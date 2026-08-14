@@ -93,6 +93,7 @@ export interface Order {
   orderStatus: OrderStatus;
   createdAt: string;
   updatedAt?: string;
+  archivedAt?: string;
   notes?: string;
   deletionReason?: string;
 }
