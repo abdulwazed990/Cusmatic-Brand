@@ -648,11 +648,31 @@ export const AdminPanel: React.FC = () => {
   const handleSaveBanner = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+
+    const isDesktopVideo = bannerFormData.mediaType === 'video';
+    const isMobileVideo = bannerFormData.mobileMediaType === 'video';
+
+    const normalizedBannerData: Omit<HeroBanner, 'id'> = {
+      title: (bannerFormData.title || '').trim(),
+      subtitle: (bannerFormData.subtitle || '').trim(),
+      mediaType: isDesktopVideo ? 'video' : 'image',
+      image: isDesktopVideo ? (bannerFormData.image || '') : (bannerFormData.image || ''),
+      videoUrl: isDesktopVideo ? (bannerFormData.videoUrl || '').trim() : '',
+      mobileMediaType: isMobileVideo ? 'video' : 'image',
+      mobileImage: isMobileVideo ? (bannerFormData.mobileImage || '') : (bannerFormData.mobileImage || ''),
+      mobileVideoUrl: isMobileVideo ? (bannerFormData.mobileVideoUrl || '').trim() : '',
+      position: bannerFormData.position || 'hero1',
+      buttonText: (bannerFormData.buttonText || '').trim(),
+      link: (bannerFormData.link || '#products').trim(),
+      isActive: bannerFormData.isActive !== undefined ? bannerFormData.isActive : true,
+      order: bannerFormData.order ? Number(bannerFormData.order) : 1,
+    };
+
     try {
       if (editingBanner) {
-        await updateBanner({ ...bannerFormData, id: editingBanner.id });
+        await updateBanner({ ...normalizedBannerData, id: editingBanner.id });
       } else {
-        await addBanner(bannerFormData);
+        await addBanner(normalizedBannerData);
       }
       setIsBannerModalOpen(false);
       setEditingBanner(null);
@@ -1711,11 +1731,20 @@ export const AdminPanel: React.FC = () => {
 
           <div className="space-y-3">
             {banners.map((b) => {
-              const isDesktopVideo = b.mediaType === 'video' || (b.videoUrl && b.videoUrl.trim().length > 0);
-              const desktopSrc = isDesktopVideo ? (b.videoUrl || b.image) : b.image;
-              const hasMobileMedia = !!(b.mobileImage || b.mobileVideoUrl);
-              const isMobileVideo = b.mobileMediaType === 'video' || (b.mobileVideoUrl && b.mobileVideoUrl.trim().length > 0);
-              const mobileSrc = isMobileVideo ? (b.mobileVideoUrl || b.mobileImage) : (b.mobileImage || desktopSrc);
+              const isDesktopVideo = b.mediaType === 'video' || (!b.mediaType && Boolean(b.videoUrl && b.videoUrl.trim().length > 0));
+              const desktopSrc = isDesktopVideo ? (b.videoUrl || b.image || '') : (b.image || '');
+              
+              const hasUploadedMobileImage = Boolean(b.mobileImage && b.mobileImage.trim().length > 0);
+              const hasUploadedMobileVideo = Boolean(b.mobileVideoUrl && b.mobileVideoUrl.trim().length > 0);
+              const hasExplicitMobileMedia = hasUploadedMobileImage || hasUploadedMobileVideo;
+              
+              const isMobileVideo = hasExplicitMobileMedia
+                ? (b.mobileMediaType === 'video' || (!b.mobileMediaType && hasUploadedMobileVideo))
+                : isDesktopVideo;
+                
+              const mobileSrc = hasExplicitMobileMedia
+                ? (isMobileVideo ? (b.mobileVideoUrl || b.mobileImage || '') : (b.mobileImage || b.mobileVideoUrl || ''))
+                : desktopSrc;
 
               return (
                 <div key={b.id} className="bg-white p-4 rounded-xl border border-neutral-200 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-2xs">
@@ -1764,8 +1793,8 @@ export const AdminPanel: React.FC = () => {
                       <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${isDesktopVideo ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'bg-blue-100 text-blue-900 border border-blue-300'}`}>
                         {isDesktopVideo ? 'Desktop Video' : 'Desktop Image'}
                       </span>
-                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${hasMobileMedia ? (isMobileVideo ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'bg-emerald-100 text-emerald-900 border border-emerald-300') : 'bg-neutral-100 text-neutral-600 border border-neutral-300'}`}>
-                        {hasMobileMedia ? (isMobileVideo ? 'Mobile Video' : 'Mobile Custom Image') : 'Mobile (Auto-Fit)'}
+                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${hasExplicitMobileMedia ? (isMobileVideo ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'bg-emerald-100 text-emerald-900 border border-emerald-300') : 'bg-neutral-100 text-neutral-600 border border-neutral-300'}`}>
+                        {hasExplicitMobileMedia ? (isMobileVideo ? 'Mobile Video' : 'Mobile Custom Image') : 'Mobile (Auto-Fit)'}
                       </span>
                       <h4 className="font-bold text-sm text-[#281044] truncate">{b.title || 'Untitled Banner'}</h4>
                     </div>
@@ -2742,8 +2771,7 @@ export const AdminPanel: React.FC = () => {
                             setBannerFormData({
                               ...bannerFormData,
                               videoUrl: reader.result as string,
-                              mediaType: 'video',
-                              image: bannerFormData.image || '/rakomart-official-logo.jpg'
+                              mediaType: 'video'
                             });
                             showToast('Desktop video loaded!');
                           }
@@ -2880,8 +2908,7 @@ export const AdminPanel: React.FC = () => {
                             setBannerFormData({
                               ...bannerFormData,
                               mobileVideoUrl: reader.result as string,
-                              mobileMediaType: 'video',
-                              mobileImage: bannerFormData.mobileImage || bannerFormData.image || '/rakomart-official-logo.jpg'
+                              mobileMediaType: 'video'
                             });
                             showToast('Mobile video loaded!');
                           }
@@ -2931,14 +2958,20 @@ export const AdminPanel: React.FC = () => {
                 )}
               </div>
 
-              {/* Mobile Media Preview Box */}
+              {/* Mobile Media Preview Box & Clear button */}
               {(bannerFormData.mobileImage || bannerFormData.mobileVideoUrl) ? (
-                <div>
-                  <div className="flex items-center justify-between mb-1">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
                     <label className="block font-bold text-neutral-700 text-[10px] uppercase tracking-wider">
                       Mobile Container Live Preview (1080 × 1350 Aspect)
                     </label>
-                    <span className="text-[10px] text-emerald-700 font-bold">✓ Custom Mobile Media</span>
+                    <button
+                      type="button"
+                      onClick={() => setBannerFormData({ ...bannerFormData, mobileImage: '', mobileVideoUrl: '' })}
+                      className="text-[10px] text-red-600 hover:text-red-800 font-bold underline"
+                    >
+                      Clear Mobile Media (Use Desktop Auto-Fit)
+                    </button>
                   </div>
                   <div className="relative rounded-lg overflow-hidden bg-black flex items-center justify-center border border-neutral-300 aspect-[1080/1350] max-h-56 w-36 mx-auto">
                     {bannerFormData.mobileMediaType === 'video' && bannerFormData.mobileVideoUrl ? (

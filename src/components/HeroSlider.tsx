@@ -13,6 +13,9 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
   const [isPlaying, setIsPlaying] = useState(true);
   const [desktopVideoError, setDesktopVideoError] = useState(false);
   const [mobileVideoError, setMobileVideoError] = useState(false);
+  const [desktopVideoPlaying, setDesktopVideoPlaying] = useState(false);
+  const [mobileVideoPlaying, setMobileVideoPlaying] = useState(false);
+  const [hero2DesktopVideoPlaying, setHero2DesktopVideoPlaying] = useState(false);
   const [aspectRatios, setAspectRatios] = useState<Record<string, number>>({});
 
   const desktopVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -24,10 +27,12 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
     .filter((b) => b.isActive && (b.position || 'hero1') === position)
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-  // Reset video errors on banner index or position change
+  // Reset video errors and playing state on banner index or position change
   useEffect(() => {
     setDesktopVideoError(false);
     setMobileVideoError(false);
+    setDesktopVideoPlaying(false);
+    setMobileVideoPlaying(false);
   }, [currentIndex, position]);
 
   // Slideshow interval
@@ -41,26 +46,50 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
 
   const currentBanner = activeBanners[currentIndex] || activeBanners[0];
 
-  // Desktop Media calculation
+  // 1. Desktop Media Resolution
   const isDesktopVideo = Boolean(
     currentBanner &&
-    (currentBanner.mediaType === 'video' || (currentBanner.videoUrl && currentBanner.videoUrl.trim().length > 0))
+    (
+      currentBanner.mediaType === 'video'
+        ? Boolean((currentBanner.videoUrl && currentBanner.videoUrl.trim().length > 0) || (currentBanner.image && currentBanner.image.trim().length > 0))
+        : currentBanner.mediaType === 'image'
+          ? false
+          : Boolean(currentBanner.videoUrl && currentBanner.videoUrl.trim().length > 0)
+    )
   );
+
   const desktopMediaSrc = currentBanner
     ? isDesktopVideo
-      ? (currentBanner.videoUrl || currentBanner.image)
-      : currentBanner.image
+      ? (currentBanner.videoUrl || currentBanner.image || '')
+      : (currentBanner.image || '')
     : '';
 
-  // Mobile Media calculation (falls back to desktop if not separately uploaded)
+  // 2. Mobile Media Resolution
+  // Check if explicit mobile media exists (uploaded or specified separately)
+  const hasUploadedMobileImage = Boolean(currentBanner?.mobileImage && currentBanner.mobileImage.trim().length > 0);
+  const hasUploadedMobileVideo = Boolean(currentBanner?.mobileVideoUrl && currentBanner.mobileVideoUrl.trim().length > 0);
+  const hasExplicitMobileMedia = hasUploadedMobileImage || hasUploadedMobileVideo;
+
   const isMobileVideo = Boolean(
-    currentBanner &&
-    (currentBanner.mobileMediaType === 'video' || (currentBanner.mobileVideoUrl && currentBanner.mobileVideoUrl.trim().length > 0) || (!currentBanner.mobileImage && isDesktopVideo))
+    currentBanner && (
+      hasExplicitMobileMedia
+        ? (
+            currentBanner.mobileMediaType === 'video'
+              ? Boolean((currentBanner.mobileVideoUrl && currentBanner.mobileVideoUrl.trim().length > 0) || (currentBanner.mobileImage && currentBanner.mobileImage.trim().length > 0))
+              : currentBanner.mobileMediaType === 'image'
+                ? false
+                : hasUploadedMobileVideo
+          )
+        : isDesktopVideo // Only fallback to desktop video format if NO custom mobile media was ever uploaded
+    )
   );
+
   const mobileMediaSrc = currentBanner
-    ? isMobileVideo
-      ? (currentBanner.mobileVideoUrl || currentBanner.mobileImage || desktopMediaSrc)
-      : (currentBanner.mobileImage || currentBanner.image || desktopMediaSrc)
+    ? hasExplicitMobileMedia
+      ? isMobileVideo
+        ? (currentBanner.mobileVideoUrl || currentBanner.mobileImage || '')
+        : (currentBanner.mobileImage || currentBanner.mobileVideoUrl || '')
+      : desktopMediaSrc // Only fallback to desktop media if no mobile media has ever been uploaded for this banner
     : '';
 
   // Pre-calculate image aspect ratio when media changes
@@ -79,7 +108,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
   }, [desktopMediaSrc, mobileMediaSrc]);
 
   // Helper for resilient video playback
-  const attachVideoAutoplay = (video: HTMLVideoElement | null) => {
+  const attachVideoAutoplay = (video: HTMLVideoElement | null, onPlayCallback?: () => void) => {
     if (!video) return () => {};
 
     video.defaultMuted = true;
@@ -88,28 +117,51 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
     video.setAttribute('x5-playsinline', '');
+    video.setAttribute('x5-video-player-type', 'h5');
+    video.setAttribute('x5-video-player-fullscreen', 'true');
+    video.setAttribute('disablePictureInPicture', 'true');
+    video.setAttribute('disableRemotePlayback', 'true');
+
+    const handlePlaying = () => {
+      if (onPlayCallback) onPlayCallback();
+    };
+
+    video.addEventListener('playing', handlePlaying);
 
     const tryPlay = () => {
       if (video) {
+        video.defaultMuted = true;
         video.muted = true;
+        if (video.currentTime > 0 && !video.paused) {
+          if (onPlayCallback) onPlayCallback();
+        }
         const playPromise = video.play();
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            const onUserAction = () => {
-              if (video) {
-                video.muted = true;
-                video.play().catch(() => {});
-              }
-              window.removeEventListener('touchstart', onUserAction);
-              window.removeEventListener('touchend', onUserAction);
-              window.removeEventListener('click', onUserAction);
-              window.removeEventListener('scroll', onUserAction);
-            };
-            window.addEventListener('touchstart', onUserAction, { passive: true, once: true });
-            window.addEventListener('touchend', onUserAction, { passive: true, once: true });
-            window.addEventListener('click', onUserAction, { passive: true, once: true });
-            window.addEventListener('scroll', onUserAction, { passive: true, once: true });
-          });
+          playPromise
+            .then(() => {
+              if (onPlayCallback) onPlayCallback();
+            })
+            .catch(() => {
+              const onUserAction = () => {
+                if (video) {
+                  video.defaultMuted = true;
+                  video.muted = true;
+                  video.play()
+                    .then(() => {
+                      if (onPlayCallback) onPlayCallback();
+                    })
+                    .catch(() => {});
+                }
+                window.removeEventListener('touchstart', onUserAction);
+                window.removeEventListener('touchend', onUserAction);
+                window.removeEventListener('click', onUserAction);
+                window.removeEventListener('scroll', onUserAction);
+              };
+              window.addEventListener('touchstart', onUserAction, { passive: true, once: true });
+              window.addEventListener('touchend', onUserAction, { passive: true, once: true });
+              window.addEventListener('click', onUserAction, { passive: true, once: true });
+              window.addEventListener('scroll', onUserAction, { passive: true, once: true });
+            });
         }
       }
     };
@@ -124,6 +176,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      video.removeEventListener('playing', handlePlaying);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   };
@@ -138,7 +191,13 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
       el.setAttribute('playsinline', '');
       el.setAttribute('webkit-playsinline', '');
       el.setAttribute('x5-playsinline', '');
-      el.play().catch(() => {});
+      el.setAttribute('x5-video-player-type', 'h5');
+      el.setAttribute('x5-video-player-fullscreen', 'true');
+      el.setAttribute('disablePictureInPicture', 'true');
+      el.setAttribute('disableRemotePlayback', 'true');
+      el.play()
+        .then(() => setDesktopVideoPlaying(true))
+        .catch(() => {});
     }
   };
 
@@ -151,27 +210,33 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
       el.setAttribute('playsinline', '');
       el.setAttribute('webkit-playsinline', '');
       el.setAttribute('x5-playsinline', '');
-      el.play().catch(() => {});
+      el.setAttribute('x5-video-player-type', 'h5');
+      el.setAttribute('x5-video-player-fullscreen', 'true');
+      el.setAttribute('disablePictureInPicture', 'true');
+      el.setAttribute('disableRemotePlayback', 'true');
+      el.play()
+        .then(() => setMobileVideoPlaying(true))
+        .catch(() => {});
     }
   };
 
   // Video autoplay listeners
   useEffect(() => {
     if (isDesktopVideo && desktopVideoRef.current) {
-      return attachVideoAutoplay(desktopVideoRef.current);
+      return attachVideoAutoplay(desktopVideoRef.current, () => setDesktopVideoPlaying(true));
     }
   }, [desktopMediaSrc, currentIndex, isDesktopVideo]);
 
   useEffect(() => {
     if (isMobileVideo && mobileVideoRef.current) {
-      return attachVideoAutoplay(mobileVideoRef.current);
+      return attachVideoAutoplay(mobileVideoRef.current, () => setMobileVideoPlaying(true));
     }
   }, [mobileMediaSrc, currentIndex, isMobileVideo]);
 
   useEffect(() => {
     if (settings?.brandStatementVideoUrl) {
-      const clean1 = attachVideoAutoplay(hero2DesktopVideoRef.current);
-      const clean2 = attachVideoAutoplay(hero2MobileVideoRef.current);
+      const clean1 = attachVideoAutoplay(hero2DesktopVideoRef.current, () => setHero2DesktopVideoPlaying(true));
+      const clean2 = attachVideoAutoplay(hero2MobileVideoRef.current, () => setHero2DesktopVideoPlaying(true));
       return () => {
         clean1();
         clean2();
@@ -272,9 +337,18 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
                       muted
                       playsInline
                       preload="auto"
+                      tabIndex={-1}
+                      controls={false}
                       disablePictureInPicture
-                      controlsList="nodownload nofullscreen noremoteplayback"
+                      disableRemotePlayback
+                      controlsList="nodownload nofullscreen noremoteplayback noplaybackrate"
                       onContextMenu={(e) => e.preventDefault()}
+                      onPlaying={() => setHero2DesktopVideoPlaying(true)}
+                      onTimeUpdate={(e) => {
+                        if (e.currentTarget.currentTime > 0 && !hero2DesktopVideoPlaying) {
+                          setHero2DesktopVideoPlaying(true);
+                        }
+                      }}
                       onEnded={(e) => {
                         e.currentTarget.currentTime = 0;
                         e.currentTarget.play().catch(() => {});
@@ -283,10 +357,13 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
                         e.currentTarget.play().catch(() => {});
                       }}
                       onLoadedData={(e) => {
+                        e.currentTarget.defaultMuted = true;
                         e.currentTarget.muted = true;
                         e.currentTarget.play().catch(() => {});
                       }}
-                      className="w-full h-auto max-h-[580px] object-contain pointer-events-none select-none mx-auto block"
+                      className={`w-full h-auto max-h-[580px] object-contain pointer-events-none select-none mx-auto block transition-opacity duration-300 ${
+                        hero2DesktopVideoPlaying ? 'opacity-100' : 'opacity-0'
+                      }`}
                     />
                     {(settings.brandStatementText || settings.brandStatementSubtext) && (
                       <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white">
@@ -353,7 +430,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
           {desktopMediaSrc && !desktopVideoError && (
             <div
               className="absolute inset-0 w-full h-full bg-cover bg-center filter blur-2xl opacity-20 scale-110 pointer-events-none"
-              style={{ backgroundImage: `url(${currentBanner.image || desktopMediaSrc})` }}
+              style={{ backgroundImage: !isDesktopVideo ? `url(${desktopMediaSrc})` : undefined }}
             />
           )}
 
@@ -363,35 +440,47 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
               ref={setDesktopVideoNode}
               key={`desktop-video-${desktopMediaSrc}`}
               src={desktopMediaSrc}
-              poster={currentBanner.image || desktopMediaSrc}
               autoPlay
               loop
               muted
               playsInline
               preload="auto"
+              tabIndex={-1}
+              controls={false}
               disablePictureInPicture
-              controlsList="nodownload nofullscreen noremoteplayback"
+              disableRemotePlayback
+              controlsList="nodownload nofullscreen noremoteplayback noplaybackrate"
               onContextMenu={(e) => e.preventDefault()}
               onError={() => setDesktopVideoError(true)}
               onLoadedMetadata={(e) => {
+                e.currentTarget.defaultMuted = true;
                 e.currentTarget.muted = true;
                 e.currentTarget.play().catch(() => {});
                 handleMediaLoad(desktopMediaSrc, e.currentTarget.videoWidth, e.currentTarget.videoHeight);
               }}
               onLoadedData={(e) => {
+                e.currentTarget.defaultMuted = true;
                 e.currentTarget.muted = true;
                 e.currentTarget.play().catch(() => {});
               }}
               onCanPlay={(e) => {
+                e.currentTarget.defaultMuted = true;
                 e.currentTarget.muted = true;
                 e.currentTarget.play().catch(() => {});
               }}
               onCanPlayThrough={(e) => {
+                e.currentTarget.defaultMuted = true;
                 e.currentTarget.muted = true;
                 e.currentTarget.play().catch(() => {});
               }}
+              onPlaying={() => {
+                setDesktopVideoPlaying(true);
+              }}
               onTimeUpdate={(e) => {
                 const v = e.currentTarget;
+                if (v.currentTime > 0 && !desktopVideoPlaying) {
+                  setDesktopVideoPlaying(true);
+                }
                 if (v.duration && v.currentTime > 0 && v.duration - v.currentTime < 0.15) {
                   v.currentTime = 0;
                   v.play().catch(() => {});
@@ -412,12 +501,14 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
                   e.currentTarget.play().catch(() => {});
                 }
               }}
-              className="relative z-0 w-full h-full max-h-[900px] object-contain pointer-events-none select-none mx-auto block"
+              className={`relative z-0 w-full h-full max-h-[900px] object-contain pointer-events-none select-none mx-auto block transition-opacity duration-300 ${
+                desktopVideoPlaying ? 'opacity-100' : 'opacity-0'
+              }`}
             />
           ) : (
             <img
-              src={currentBanner.image || desktopMediaSrc}
-              alt={currentBanner.title || 'RakoMart Hero Banner'}
+              src={desktopMediaSrc}
+              alt={currentBanner.title || 'RakoMart Desktop Hero Banner'}
               onLoad={(e) => handleMediaLoad(desktopMediaSrc, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
               className="relative z-0 w-full h-full max-h-[900px] object-contain mx-auto block"
             />
@@ -521,7 +612,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
           {mobileMediaSrc && !mobileVideoError && (
             <div
               className="absolute inset-0 w-full h-full bg-cover bg-center filter blur-xl opacity-25 scale-110 pointer-events-none"
-              style={{ backgroundImage: `url(${currentBanner.mobileImage || currentBanner.image || mobileMediaSrc})` }}
+              style={{ backgroundImage: !isMobileVideo ? `url(${mobileMediaSrc})` : undefined }}
             />
           )}
 
@@ -531,35 +622,47 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
               ref={setMobileVideoNode}
               key={`mobile-video-${mobileMediaSrc}`}
               src={mobileMediaSrc}
-              poster={currentBanner.mobileImage || currentBanner.image || mobileMediaSrc}
               autoPlay
               loop
               muted
               playsInline
               preload="auto"
+              tabIndex={-1}
+              controls={false}
               disablePictureInPicture
-              controlsList="nodownload nofullscreen noremoteplayback"
+              disableRemotePlayback
+              controlsList="nodownload nofullscreen noremoteplayback noplaybackrate"
               onContextMenu={(e) => e.preventDefault()}
               onError={() => setMobileVideoError(true)}
               onLoadedMetadata={(e) => {
+                e.currentTarget.defaultMuted = true;
                 e.currentTarget.muted = true;
                 e.currentTarget.play().catch(() => {});
                 handleMediaLoad(mobileMediaSrc, e.currentTarget.videoWidth, e.currentTarget.videoHeight);
               }}
               onLoadedData={(e) => {
+                e.currentTarget.defaultMuted = true;
                 e.currentTarget.muted = true;
                 e.currentTarget.play().catch(() => {});
               }}
               onCanPlay={(e) => {
+                e.currentTarget.defaultMuted = true;
                 e.currentTarget.muted = true;
                 e.currentTarget.play().catch(() => {});
               }}
               onCanPlayThrough={(e) => {
+                e.currentTarget.defaultMuted = true;
                 e.currentTarget.muted = true;
                 e.currentTarget.play().catch(() => {});
               }}
+              onPlaying={() => {
+                setMobileVideoPlaying(true);
+              }}
               onTimeUpdate={(e) => {
                 const v = e.currentTarget;
+                if (v.currentTime > 0 && !mobileVideoPlaying) {
+                  setMobileVideoPlaying(true);
+                }
                 if (v.duration && v.currentTime > 0 && v.duration - v.currentTime < 0.15) {
                   v.currentTime = 0;
                   v.play().catch(() => {});
@@ -580,12 +683,14 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ position = 'hero1' }) =>
                   e.currentTarget.play().catch(() => {});
                 }
               }}
-              className="relative z-0 w-full h-full max-h-[650px] object-contain pointer-events-none select-none mx-auto block"
+              className={`relative z-0 w-full h-full max-h-[650px] object-contain pointer-events-none select-none mx-auto block transition-opacity duration-300 ${
+                mobileVideoPlaying ? 'opacity-100' : 'opacity-0'
+              }`}
             />
           ) : (
             <img
-              src={currentBanner.mobileImage || currentBanner.image || mobileMediaSrc}
-              alt={currentBanner.title || 'RakoMart Hero Banner'}
+              src={mobileMediaSrc}
+              alt={currentBanner.title || 'RakoMart Mobile Hero Banner'}
               onLoad={(e) => handleMediaLoad(mobileMediaSrc, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
               className="relative z-0 w-full h-full max-h-[650px] object-contain mx-auto block"
             />

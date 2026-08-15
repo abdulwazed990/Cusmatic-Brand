@@ -6,37 +6,40 @@
   }
 }
 
-/* Disable native browser / WebKit video play buttons, overlays, and controls */
-video::-webkit-media-controls {
-  display: none !important;
-  -webkit-appearance: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-}
-video::-webkit-media-controls-start-playback-button {
+/* Disable native browser / WebKit / Blink / Gecko video play buttons, overlays, and controls */
+video::-webkit-media-controls,
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-enclosure,
+video::-webkit-media-controls-overlay-play-button,
+video::-webkit-media-controls-panel,
+video::-webkit-media-controls-overlay-enclosure,
+video::-webkit-media-controls-current-time-display,
+video::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-timeline,
+video::-webkit-media-controls-volume-slider,
+video::-webkit-media-controls-mute-button,
+video::-webkit-media-controls-toggle-closed-captions-button,
+video::-webkit-media-controls-fullscreen-button {
   display: none !important;
   -webkit-appearance: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
 }
-video::-webkit-media-controls-play-button {
+
+video::-moz-media-controls {
   display: none !important;
-  -webkit-appearance: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
 }
-video::-webkit-media-controls-enclosure {
-  display: none !important;
-  -webkit-appearance: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-}
-video::-webkit-media-controls-overlay-play-button {
-  display: none !important;
-  -webkit-appearance: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
+
+video {
+  outline: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 /* Custom Brand Color Utility Helpers */
