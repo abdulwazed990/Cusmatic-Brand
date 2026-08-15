@@ -331,9 +331,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [banners, setBanners] = useState<HeroBanner[]>(() => {
     try {
       const cached = localStorage.getItem('rakomart_banners_cache');
-      return cached ? JSON.parse(cached) : [];
+      return cached ? JSON.parse(cached) : INITIAL_HERO_BANNERS;
     } catch {
-      return [];
+      return INITIAL_HERO_BANNERS;
     }
   });
 
@@ -468,7 +468,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // 1. Settings Listener (Persistent Global Settings & Official Logo)
         unsubSettings = onSnapshot(
           doc(db, 'storeSettings', 'global_settings'),
-          async (docSnap) => {
+          (docSnap) => {
             if (docSnap.exists()) {
               const data = docSnap.data() as AdminSettings;
               const merged: AdminSettings = { ...DEFAULT_ADMIN_SETTINGS, ...data };
@@ -476,20 +476,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               try {
                 localStorage.setItem('rakomart_settings_cache', JSON.stringify(merged));
               } catch {}
-              setIsCloudConnected(true);
-            } else if (!(docSnap as any).metadata?.fromCache) {
-              // Only seed if document truly does not exist in online Cloud Firestore
-              const hasSeededSettings = localStorage.getItem('rakomart_settings_initialized');
-              if (!hasSeededSettings) {
-                try {
-                  await setDoc(doc(db, 'storeSettings', 'global_settings'), DEFAULT_ADMIN_SETTINGS, { merge: true });
-                  localStorage.setItem('rakomart_settings_initialized', 'true');
-                } catch (seedErr) {
-                  console.warn('Initial settings seeding note:', seedErr);
-                }
-              }
-              setIsCloudConnected(true);
             }
+            setIsCloudConnected(true);
             settingsResolved = true;
             checkAllResolved();
           },
@@ -499,7 +487,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // 2. Categories Listener
         unsubCat = onSnapshot(
           collection(db, 'categories'),
-          async (snapshot) => {
+          (snapshot) => {
             if (!snapshot.empty && snapshot.docs.length > 0) {
               const list: Category[] = snapshot.docs.map((d) => d.data() as Category);
               list.sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -507,16 +495,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               try {
                 localStorage.setItem('rakomart_categories_cache', JSON.stringify(list));
               } catch {}
-            } else if (snapshot.empty && !snapshot.metadata.fromCache) {
-              const hasSeededCategories = localStorage.getItem('rakomart_categories_initialized');
-              if (!hasSeededCategories) {
-                try {
-                  for (const cat of INITIAL_CATEGORIES) {
-                    await setDoc(doc(db, 'categories', cat.id || cat.slug), cat, { merge: true });
-                  }
-                  localStorage.setItem('rakomart_categories_initialized', 'true');
-                } catch {}
-              }
             }
             categoriesResolved = true;
             checkAllResolved();
@@ -528,23 +506,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // 3. Products Listener
         unsubProd = onSnapshot(
           collection(db, 'products'),
-          async (snapshot) => {
+          (snapshot) => {
             if (!snapshot.empty && snapshot.docs.length > 0) {
               const list: Product[] = snapshot.docs.map((d) => d.data() as Product);
               setProducts(list);
               try {
                 localStorage.setItem('rakomart_products_cache', JSON.stringify(list));
               } catch {}
-            } else if (snapshot.empty && !snapshot.metadata.fromCache) {
-              const hasSeededProducts = localStorage.getItem('rakomart_products_initialized');
-              if (!hasSeededProducts) {
-                try {
-                  for (const prod of MOCK_PRODUCTS) {
-                    await setDoc(doc(db, 'products', prod.id), prod, { merge: true });
-                  }
-                  localStorage.setItem('rakomart_products_initialized', 'true');
-                } catch {}
-              }
             }
             productsResolved = true;
             checkAllResolved();
@@ -556,7 +524,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // 4. Banners Listener (Guaranteed Permanent Media Persistence)
         unsubBanners = onSnapshot(
           collection(db, 'banners'),
-          async (snapshot) => {
+          (snapshot) => {
             if (!snapshot.empty && snapshot.docs.length > 0) {
               const list: HeroBanner[] = snapshot.docs.map((d) => {
                 const data = d.data() as HeroBanner;
@@ -567,17 +535,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               try {
                 localStorage.setItem('rakomart_banners_cache', JSON.stringify(list));
               } catch {}
-            } else if (snapshot.empty && !snapshot.metadata.fromCache) {
-              // Never overwrite user deleted/configured banners automatically
-              const hasSeededBanners = localStorage.getItem('rakomart_banners_initialized');
-              if (!hasSeededBanners) {
-                try {
-                  for (const banner of INITIAL_HERO_BANNERS) {
-                    await setDoc(doc(db, 'banners', banner.id), banner, { merge: true });
-                  }
-                  localStorage.setItem('rakomart_banners_initialized', 'true');
-                } catch {}
-              }
             }
             bannersResolved = true;
             checkAllResolved();
